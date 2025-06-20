@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campeões de Nova Insula</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos básicos para centralizar o jogo e definir o fundo */
+        body {
+            margin: 0;
+            overflow: hidden; /* Esconde barras de rolagem */
+            background-color: #222; /* Fundo escuro para a página */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif; /* Usando a fonte Inter */
+            color: #eee; /* Cor clara para o texto */
+        }
+
+        /* Estilos para o canvas da área de jogo */
+        canvas {
+            background-color: #333; /* Fundo escuro levemente mais claro para a área de jogo */
+            border: 5px solid #555; /* Borda ao redor do canvas */
+            border-radius: 10px; /* Cantos arredondados */
+            display: block; /* Garante que o canvas seja um elemento de bloco */
+            touch-action: none; /* Previne ações de toque padrão como rolagem/zoom */
+        }
+
+        /* Exibição de informações do jogo (pontuação, nível, XP) */
+        #game-info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente */
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            display: flex;
+            gap: 30px; /* Espaçamento entre os elementos de informação */
+            z-index: 900; /* Garante que esteja acima do canvas, mas abaixo dos modais */
+        }
+
+        /* Estilos para todas as caixas de mensagem/modais */
+        #message-box, #character-selection, #upgrade-selection, #weapon-selection, #initial-weapon-selection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Centraliza a caixa */
+            background-color: rgba(0, 0, 0, 0.9); /* Fundo mais opaco */
+            padding: 15px;
+            border-radius: 15px; /* Cantos arredondados */
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Sombra para profundidade */
+            display: none; /* Escondido por padrão */
+            z-index: 1000; /* Garante que esteja no topo de tudo */
+            max-width: 95%; /* Largura responsiva */
+            max-height: 85vh; /* Altura responsiva */
+            overflow-y: auto; /* Rolagem para conteúdo longo */
+            box-sizing: border-box; /* Inclui padding no cálculo de largura/altura */
+        }
+
+        /* Títulos dentro das caixas de seleção */
+        #character-selection h2, #upgrade-selection h2, #weapon-selection h2, #initial-weapon-selection h2 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        /* Layout de grade para listas de personagens, upgrades e armas */
+        #character-list, #upgrade-list, #weapon-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Colunas de grade responsivas */
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* Grade específica para seleção de arma inicial */
+        #initial-weapon-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            justify-content: center;
+        }
+
+        /* Estilos para cartões individuais nos menus de seleção */
+        .character-card, .upgrade-card {
+            background-color: #444; /* Fundo mais escuro para cartões */
+            padding: 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease; /* Efeitos de hover suaves */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 2px solid #555;
+        }
+
+        /* Efeitos de hover para cartões de personagem */
+        .character-card:hover {
+            transform: translateY(-5px); /* Efeito de elevação */
+            box-shadow: 0 8px 15px rgba(0, 255, 255, 0.3); /* Sombra ciano */
+            border-color: deepskyblue; /* Borda ciano */
+        }
+
+        /* Efeitos de hover para cartões de upgrade/arma */
+        .upgrade-card:hover {
+            transform: translateY(-5px); /* Efeito de elevação */
+            box-shadow: 0 8px 15px rgba(0, 255, 0, 0.3); /* Sombra verde */
+            border-color: limegreen; /* Borda verde */
+        }
+
+        /* Títulos dentro dos cartões */
+        .character-card h3, .upgrade-card h3 {
+            color: #fff;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+
+        /* Parágrafos dentro dos cartões */
+        .character-card p, .upgrade-card p {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+
+        /* Ícones para personagens e upgrades */
+        .char-icon, .upgrade-icon {
+            font-size: 2.5em;
+            line-height: 1; /* Alinha o ícone verticalmente */
+        }
+
+        /* Estilo específico para título e parágrafo da caixa de mensagem */
+        #message-box h2 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 2em;
+        }
+
+        #message-box p {
+            font-size: 1.1em;
+            color: #ccc;
+        }
+
+        /* Estilos para todos os botões */
+        #message-box button, #character-selection button, #upgrade-selection button, #weapon-selection button, #initial-weapon-selection button {
+            background-color: #4CAF50; /* Fundo verde */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 20px;
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Transições suaves */
+            box-shadow: 0 4px #2e7d32; /* Sombra do botão */
+        }
+
+        /* Efeito de hover do botão */
+        #message-box button:hover, #character-selection button:hover, #upgrade-selection button:hover, #weapon-selection button:hover, #initial-weapon-selection button:hover {
+            background-color: #45a049; /* Verde mais escuro no hover */
+            transform: translateY(-2px); /* Leve elevação */
+        }
+
+        /* Efeito de clique do botão */
+        #message-box button:active, #character-selection button:active, #upgrade-selection button:active, #weapon-selection button:active, #initial-weapon-selection button:active {
+            transform: translateY(2px); /* Efeito de "pressionar" */
+            box-shadow: 0 2px #2e7d32; /* Sombra menor ao pressionar */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="game-info">
+        <div id="score-display">Pontuação: 0</div>
+        <div id="level-display">Nível: 1</div>
+        <div id="xp-display">XP: 0/100</div>
+    </div>
+    <div id="message-box">
+        <h2 id="message-title"></h2>
+        <p id="message-text"></p>
+        <button id="message-button"></button>
+    </div>
+    <div id="character-selection">
+        <h2>Escolha o seu Personagem</h2>
+        <div id="character-list"></div>
+    </div>
+    <div id="upgrade-selection">
+        <h2>Selecione um Atributo!</h2>
+        <div id="upgrade-list"></div>
+    </div>
+    <div id="weapon-selection">
+        <h2>Escolha uma Nova Arma!</h2>
+        <div id="weapon-list"></div>
+    </div>
+    <div id="initial-weapon-selection">
+        <h2>Escolha a Arma Inicial de Teste!</h2>
+        <div id="initial-weapon-list"></div>
+    </div>
+
+    <script>
+        // Obtém o elemento canvas e seu contexto de renderização 2D
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Variáveis de estado do jogo
+        let gameRunning = false;
+        let selectedCharacter = null;
+        let isLevelingUp = false;
+        let isChoosingWeapon = false;
+        let isChoosingInitialWeapon = false;
+
+        // Variáveis de dimensão do mapa
+        let mapWidth = 0;
+        let mapHeight = 0;
+        let cameraX = 0; // Posição X da câmera (canto superior esquerdo da tela visível no mapa)
+        let cameraY = 0; // Posição Y da câmera (canto superior esquerdo da tela visível no mapa)
+
+        // Objeto do jogador com propriedades iniciais
+        let player = {
+            x: 0, // Posição X do jogador no mapa (será centralizado no início)
+            y: 0, // Posição Y do jogador no mapa (será centralizado no início)
+            radius: 15, // Raio de colisão do jogador
+            speed: 5, // Velocidade de movimento do jogador
+            color: 'deepskyblue', // Cor padrão do jogador
+            health: 100, // Vida atual
+            maxHealth: 100, // Vida máxima
+            damageMultiplier: 1.0, // Multiplicador de dano do jogador
+            collectionRadiusMultiplier: 1.0, // Multiplicador do raio de coleta de orbes de experiência
+            baseProjectileDamage: 5, // Dano base do projétil primário do personagem
+            projectileCountMultiplier: 1, // Multiplicador para o número de projéteis disparados (para armas secundárias)
+            basicAttackLevel: 0, // Nível do ataque básico (inicializado em 0, definido para 1 em selectCharacter)
+            activeWeapons: [], // Array para armazenar armas ativas (escolhidas no level up)
+            hasShield: false, // Flag para o status do escudo (da arma Escudo do Cão)
+            lastShieldUsedTime: 0, // Timestamp do último uso do escudo
+            isInvulnerable: false, // Flag para invulnerabilidade
+            invulnerabilityStartTime: 0, // Timestamp de início da invulnerabilidade
+            invulnerabilityDuration: 1000, // Duração da invulnerabilidade em ms (1 segundo)
+            spriteSheet: null, // Referência à imagem da sprite sheet carregada
+            spriteWidth: 0, // Largura de um único quadro na sprite sheet
+            spriteHeight: 0, // Altura de um único quadro na sprite sheet
+            useSprite: false, // Flag para indicar se a sprite deve ser usada
+            isMoving: false, // Flag para indicar se o jogador está se movendo atualmente
+            direction: 'down', // Direção atual para animação da sprite
+        };
+
+        // Arrays de entidades do jogo
+        let projectiles = []; // Array de projéteis ativos
+        let enemies = []; // Array de inimigos ativos
+        let experienceOrbs = []; // Array de orbes de experiência no campo
+        let activeAuras = []; // Array de efeitos de aura ativos (ex: Fogo Fátuo)
+        let explosions = []; // Array de efeitos visuais de explosão
+        let score = 0; // Pontuação do jogador
+        let currentExperience = 0; // Pontos de experiência atuais
+        let currentLevel = 1; // Nível atual do jogador
+        let experienceToNextLevel = 100; // XP necessário para o próximo nível
+        let lastBasicAttackTime = 0; // Cooldown para o ataque básico
+        let lastEnemySpawnTime = 0; // Timestamp do último spawn de inimigo
+        let enemySpawnInterval = 800; // Tempo (ms) entre os spawns de inimigos
+        let enemySpeed = 1; // Velocidade base dos inimigos
+
+        // Variáveis para aumento de velocidade dos inimigos baseado no tempo
+        let gameStartTime = 0; // Timestamp quando o jogo começa oficialmente
+        let lastTimeBasedSpeedIncrease = 0; // Timestamp do último aumento de velocidade (a cada 10 minutos)
+        const TIME_INTERVAL_FOR_SPEED_INCREASE = 10 * 60 * 1000; // 10 minutos em milissegundos
+        const SPEED_INCREASE_PERCENTAGE = 0.005; // Aumento de 0.5%
+
+        const enemyDamageToPlayer = 5; // Dano causado pelos inimigos em colisão
+        let projectilesToRemove = new Set(); // Conjunto para rastrear projéteis a serem removidos
+        let enemiesToRemove = new Set(); // Conjunto para rastrear inimigos a serem removidos
+        let orbsToSpawn = []; // Array temporário para orbes gerados a partir da morte de inimigos
+
+        // Utilitário Asset Loader para imagens
+        const assetLoader = {
+            images: {}, // Armazena objetos de imagem carregados
+            imageUrls: {}, // Armazena URLs a serem carregadas
+            loadCount: 0, // Contador para imagens carregadas
+            totalCount: 0, // Total de imagens a carregar
+            // Adiciona uma URL de imagem à fila do carregador
+            addImage(id, url) {
+                this.imageUrls[id] = url;
+                this.totalCount++;
+            },
+            // Carrega todas as imagens adicionadas e chama um callback quando concluído
+            loadAll(callback) {
+                if (this.totalCount === 0) {
+                    callback(); // Se não houver imagens, chama o callback imediatamente
+                    return;
+                }
+                for (const id in this.imageUrls) {
+                    const url = this.imageUrls[id];
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous"; // Necessário para carregar imagens de outras origens
+                    img.src = url;
+                    img.onload = () => {
+                        this.images[id] = img;
+                        this.loadCount++;
+                        if (this.loadCount === this.totalCount) {
+                            callback(); // Todas as imagens carregadas, chama o callback
+                        }
+                    };
+                    img.onerror = () => {
+                        console.error(`Falha ao carregar a imagem: ${url}`); // Tratamento de erro para o carregamento da imagem
+                        this.loadCount++;
+                        if (this.loadCount === this.totalCount) {
+                            callback();
+                        }
+                    };
+                }
+            },
+            // Recupera uma imagem carregada pelo seu ID
+            getImage(id) {
+                return this.images[id] || null;
+            }
+        };
+
+        // Definições de Personagens
+        const characters = {
+            andywn: {
+                id: 'andywn', name: 'Andywn', icon: '✨', description: 'Magias fortes, lentas e teleguiadas.',
+                playerSpeed: 4.5 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#8A2BE2',
+                baseProjectileRadius: 10,
+                projectileSpeed: 4 * 0.6, // UPDATED: Reduzido em 40% (x 0.6)
+                projectileColor: 'purple',
+                baseAttackInterval: 800 * 1.4, // UPDATED: Aumentado em 40% (x 1.4)
+                // Você DEVE substituir este link pelo link DIRETO da sua sprite sheet real (ex: raw.githubusercontent.com/...).
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
+    
+                // Largura e altura de CADA QUADRO individual na sprite sheet
+                // (Total da sheet: 532 de largura / 4 posições = 133 de largura por quadro)
+                spriteWidth: 40, 
+                spriteHeight: 40, 
+
+                          // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
+                  // Lembre-se: 'sx' é o X de início do recorte, 'sy' é o Y de início do recorte.
+                    // 'sWidth' e 'sHeight' são o tamanho do recorte.
+    spriteFrames: {
+        // Posição para cima
+        up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 }, 
+        
+        // Posição para baixo (assumindo que está na primeira célula)
+        down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },   
+        
+        // Posição para a esquerda (assumindo que está na terceira célula)
+        left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 }, 
+        
+        // Posição para a direita (assumindo que está na quarta célula)
+        right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 } 
+    },
+                projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', // Placeholder para o projétil
+                projectileSpriteWidth: 30,
+                projectileSpriteHeight: 30,
+            },
+            kazu: {
+                id: 'kazu', name: 'Kazu', icon: '⚔️', description: 'Espadas médias, rápido e teleguiadas.',
+                playerSpeed: 5.5 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#778899',
+                baseProjectileRadius: 7,
+                projectileSpeed: 6 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'silver',
+                baseAttackInterval: 500 * 1.4 // UPDATED: Aumentado em 40%
+            },
+            raime: {
+                id: 'raime', name: 'Raimé', icon: '👊', description: 'Socos fortes em arco de 180º, curto alcance.',
+                playerSpeed: 5 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#CD853F',
+                baseProjectileRadius: 12,
+                projectileSpeed: 10 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'orange',
+                baseAttackInterval: 400 * 1.4, // UPDATED: Aumentado em 40%
+                projectileMaxTravelDistance: 120
+            },
+            thorne: {
+                id: 'thorne', name: 'Thorne', icon: '🎯', description: 'Tiros rápidos de baixo dano nas 4 diagonais.',
+                playerSpeed: 5.2 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#5F9EA0',
+                baseProjectileRadius: 4,
+                projectileSpeed: 9 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'lightblue',
+                baseAttackInterval: 600 * 1.4 // UPDATED: Aumentado em 40%
+            },
+            gaeru: {
+                id: 'gaeru', name: 'Gaeru', icon: '⚡', description: 'Especialista em alvo único, tiro mais rápido, dano muito baixo. Mais rápido na movimentação.',
+                playerSpeed: 6.5 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#3CB371',
+                baseProjectileRadius: 3,
+                projectileSpeed: 12 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'lime',
+                baseAttackInterval: 300 * 1.4 // UPDATED: Aumentado em 40%
+            },
+            general: {
+                id: 'general', name: 'General', icon: '🔫', description: 'Atira três tiros em leque na direção do inimigo. Dano médio.',
+                playerSpeed: 4.8 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#696969',
+                baseProjectileRadius: 6,
+                projectileSpeed: 7 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'darkgray',
+                baseAttackInterval: 700 * 1.4 // UPDATED: Aumentado em 40%
+            },
+            ito: {
+                id: 'ito', name: 'Ito', icon: '🍳', description: 'Projéteis de tamanhos aleatórios, curto alcance.',
+                playerSpeed: 5.3 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#FFD700',
+                projectileMinRadius: 5,
+                projectileMaxRadius: 15,
+                projectileSpeed: 8 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: '#8B4513',
+                baseAttackInterval: 450 * 1.4, // UPDATED: Aumentado em 40%
+                projectileLifespan: 30
+            },
+            teste: {
+                id: 'teste', name: 'Teste', icon: '🧪', description: 'Personagem de teste. Escolha a sua arma inicial!',
+                playerSpeed: 5.0 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#808000',
+            }
+        };
+
+        // Definições de Upgrades
+        const upgrades = {
+            might: { name: 'Força', icon: '💪', description: 'Aumenta o dano dos seus ataques em 1%.', apply: () => { player.damageMultiplier *= 1.01; } },
+            dexterity: { name: 'Destreza', icon: '🏃‍♂️', description: 'Aumenta a sua velocidade de movimento. (Atualmente desativado)', apply: () => { /* Nenhuma alteração na velocidade aqui */ } },
+            willpower: { name: 'Vigor', icon: '❤️', description: 'Aumenta a vida máxima em 1% e recupera vida proporcionalmente.', apply: () => { const healthIncrease = player.maxHealth * 0.01; player.maxHealth = Math.floor(player.maxHealth + healthIncrease); player.health = Math.min(Math.floor(player.health + healthIncrease), player.maxHealth); } },
+            insight: { name: 'Percepção', icon: '👁️', description: 'Aumenta o raio de coleta de orbes e itens em 1%.', apply: () => { player.collectionRadiusMultiplier *= 1.01; } }
+        };
+
+        // Definições de Armas
+        const weapons = {
+            // Upgrade de Ataque Básico - Nível 2
+            basic_attack_level_2: {
+                id: 'basic_attack_level_2', name: 'Ataque Básico Nv. 2', icon: '⬆️', description: 'Aumenta o ataque básico para Nível 2. Projéteis +5% e um projétil extra com atraso.',
+                type: 'basic_attack_level_up', nextLevel: 2,
+                trigger: (playerRef) => { playerRef.basicAttackLevel = 2; }
+            },
+            // Upgrade de Ataque Básico - Nível 3
+            basic_attack_level_3: {
+                id: 'basic_attack_level_3', name: 'Ataque Básico Nv. 3', icon: '⬆️⬆️', description: 'Aumenta o ataque básico para Nível 3. Projéteis +10% e dois projéteis extras com atraso.',
+                type: 'basic_attack_level_up', nextLevel: 3,
+                trigger: (playerRef) => { playerRef.basicAttackLevel = 3; }
+            },
+            // Upgrade de Ataque Básico - Nível 4
+            basic_attack_level_4: {
+                id: 'basic_attack_level_4', name: 'Ataque Básico Nv. 4', icon: '⬆️⬆️⬆️', description: 'Aumenta o ataque básico para Nível 4. Projéteis +15% e três projéteis extras com atraso.',
+                type: 'basic_attack_level_up', nextLevel: 4,
+                trigger: (playerRef) => { playerRef.basicAttackLevel = 4; }
+            },
+            // Upgrade de Ataque Básico - Nível 5
+            basic_attack_level_5: {
+                id: 'basic_attack_level_5', name: 'Ataque Básico Nv. 5 (Máx)', icon: '✨⬆️', description: 'Aumenta o ataque básico para Nível 5 (Máx). Projéteis +20% e quatro projéteis extras com atraso.',
+                type: 'basic_attack_level_up', nextLevel: 5,
+                trigger: (playerRef) => { playerRef.basicAttackLevel = 5; }
+            },
+            rotating_chakram: {
+                id: 'rotating_chakram', name: 'Chakram Rotatório', icon: '🥏', description: 'Um projétil lento que orbita o personagem e some após 3 segundos. Ativa-se a cada 5 segundos.',
+                cooldown: 5000, type: 'projectile',
+                projectileProps: { radius: 10, speed: 0, color: 'gold', baseDamage: 50, lifespan: 180, type: 'orbiting', orbitRadius: 60, orbitSpeed: 0.1, },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const initialOrbitAngle = Math.random() * Math.PI * 2;
+                    projectilesRef.push({
+                        x: playerRef.x, y: playerRef.y,
+                        radius: this.projectileProps.radius,
+                        speed: this.projectileProps.speed,
+                        color: this.projectileProps.color,
+                        damage: this.projectileProps.baseDamage * playerRef.damageMultiplier,
+                        lifespan: this.projectileProps.lifespan,
+                        type: this.projectileProps.type,
+                        orbitRadius: this.projectileProps.orbitRadius,
+                        orbitSpeed: this.projectileProps.orbitSpeed,
+                        currentOrbitAngle: initialOrbitAngle,
+                        creationTime: currentTime
+                    });
+                }
+            },
+            dragon_god_sword: {
+                id: 'dragon_god_sword', name: 'Espada do Deus Dragão', icon: '🐉', description: 'Um raio atinge um inimigo aleatório. Ativa-se a cada 3 segundos, causando dano massivo.',
+                cooldown: 3000, type: 'instant_effect',
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    if (enemiesRef.length > 0) {
+                        const targetEnemyIndex = Math.floor(Math.random() * enemiesRef.length);
+                        const targetEnemy = enemiesRef[targetEnemyIndex];
+                        targetEnemy.health -= (50 * playerRef.damageMultiplier);
+                        if (targetEnemy.health <= 0) {
+                            enemiesToRemove.add(targetEnemy);
+                            score += Math.round(10 * playerRef.damageMultiplier);
+                            orbsToSpawn.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                        }
+                        explosions.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 50, color: 'yellow', duration: 5, type: 'flash' });
+                    }
+                }
+            },
+            crazy_boomerang: {
+                id: 'crazy_boomerang', name: 'Bumerangue Doido', icon: '🪃', description: 'Dispara um projétil que faz um movimento de "oito" e some ao completar. Ativa-se a cada 4 segundos.',
+                cooldown: 4000, type: 'projectile',
+                projectileProps: { radius: 10, color: 'brown', baseDamage: 30, type: 'figure_eight', loopDuration: 4000, loopSizeX: 100, loopSizeY: 50, },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    projectilesRef.push({
+                        initialX: playerRef.x, initialY: playerRef.y,
+                        x: playerRef.x, y: playerRef.y,
+                        radius: this.projectileProps.radius,
+                        color: this.projectileProps.color,
+                        damage: this.projectileProps.baseDamage * playerRef.damageMultiplier,
+                        type: this.projectileProps.type,
+                        loopStartTime: currentTime,
+                        loopDuration: this.projectileProps.loopDuration,
+                        loopSizeX: this.projectileProps.loopSizeX,
+                        loopSizeY: this.projectileProps.loopSizeY,
+                        creationTime: currentTime
+                    });
+                }
+            },
+            fogo_fatuo: {
+                id: 'fogo_fatuo', name: 'Fogo Fátuo', icon: '🔵', description: 'Cria um círculo semitransparente de 10x o raio do personagem. Inimigos dentro levam 50 de dano por segundo. Recarrega a cada 1s e dura 4s.',
+                cooldown: 1000, duration: 4000, type: 'timed_effect',
+                auraProps: { radiusMultiplier: 10, damage: 50, color: 'darkblue', tickInterval: 1000 },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const existingEffect = activeAurasRef.find(eff => eff.id === this.id && eff.type === 'timed_aura_damage');
+                    if (!existingEffect) {
+                        activeAurasRef.push({
+                            id: this.id, type: 'timed_aura_damage',
+                            radius: playerRef.radius * this.auraProps.radiusMultiplier,
+                            visualRadius: playerRef.radius * this.auraProps.radiusMultiplier,
+                            damage: this.auraProps.damage,
+                            color: this.auraProps.color,
+                            startTime: currentTime,
+                            endTime: currentTime + this.duration,
+                            nextDamageTime: currentTime,
+                            tickInterval: this.auraProps.tickInterval
+                        });
+                    }
+                }
+            },
+            dog_shield: {
+                id: 'dog_shield', name: 'Escudo do Cão', icon: '🛡️', description: 'Cria um escudo que protege do próximo dano. Recarrega a cada 5 segundos.',
+                cooldown: 5000, type: 'passive_effect',
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {}
+            },
+            strong_bomb: {
+                id: 'strong_bomb', name: 'Bomba Forte', icon: '💣', description: 'Cria um projétil que explode a cada 4 segundos, causando dano em área.',
+                cooldown: 2000, type: 'projectile',
+                projectileProps: { radius: 12, color: 'black', baseDamage: 0, fuseTime: 240, type: 'bomb', explosionRadius: 80, explosionDamage: 50 },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const nearestEnemy = getNearestEnemy(playerRef.x, playerRef.y);
+                    const baseAngle = nearestEnemy ? Math.atan2(nearestEnemy.y - playerRef.y, nearestEnemy.x - playerRef.x) : Math.random() * Math.PI * 2;
+                    const dx = Math.cos(baseAngle);
+                    const dy = Math.sin(baseAngle);
+                    projectilesRef.push({
+                        x: playerRef.x, y: playerRef.y,
+                        radius: this.projectileProps.radius,
+                        speed: this.projectileProps.speed,
+                        color: this.projectileProps.color,
+                        damage: this.projectileProps.baseDamage * playerRef.damageMultiplier,
+                        dx: dx, dy: dy,
+                        type: this.projectileProps.type,
+                        fuseTime: this.projectileProps.fuseTime,
+                        explosionRadius: this.projectileProps.explosionRadius,
+                        explosionDamage: this.projectileProps.explosionDamage * playerRef.damageMultiplier,
+                        spawnTime: currentTime,
+                        creationTime: currentTime
+                    });
+                }
+            },
+            holy_heal: {
+                id: 'holy_heal', name: 'Cura Sagrada', icon: '💚', description: 'Cura 20 de vida. Ativa-se a cada 5 segundos.',
+                cooldown: 5000, type: 'instant_effect',
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    playerRef.health = Math.min(playerRef.health + 20, playerRef.maxHealth);
+                }
+            },
+            multiplier: {
+                id: 'multiplier', name: 'Multiplicador', icon: '✖️', description: 'Dobra o número de projéteis emitido por 20 segundos. Recarrega a cada 20 segundos.',
+                cooldown: 20000, duration: 20000, type: 'timed_effect',
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const existingMultiplier = activeAurasRef.find(eff => eff.id === this.id && eff.type === 'projectileMultiplier');
+                    if (!existingMultiplier) {
+                        activeAurasRef.push({
+                            id: this.id, type: 'projectileMultiplier',
+                            multiplierValue: 2,
+                            startTime: currentTime,
+                            endTime: currentTime + this.duration
+                        });
+                        playerRef.projectileCountMultiplier = 2;
+                    }
+                },
+                onEnd: function(playerRef) {
+                    playerRef.projectileCountMultiplier = 1;
+                }
+            },
+            laser: {
+                id: 'laser', name: 'Laser', icon: '💥', description: 'Dispara uma linha contínua que atravessa o ecrã. Ativa-se a cada 4 segundos.',
+                cooldown: 4000, type: 'projectile',
+                projectileProps: { width: 8, height: Math.max(canvas.width, canvas.height) * 1.5, color: 'lime', baseDamage: 40, lifespan: 60, type: 'laser', },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const nearestEnemy = getNearestEnemy(playerRef.x, playerRef.y);
+                    const baseAngle = nearestEnemy ? Math.atan2(nearestEnemy.y - playerRef.y, nearestEnemy.x - playerRef.x) : Math.random() * Math.PI * 2;
+                    projectilesRef.push({
+                        x: playerRef.x, y: playerRef.y,
+                        width: this.projectileProps.width,
+                        height: this.projectileProps.height,
+                        color: this.projectileProps.color,
+                        damage: this.projectileProps.baseDamage * playerRef.damageMultiplier,
+                        angle: baseAngle,
+                        lifespan: this.projectileProps.lifespan,
+                        type: this.projectileProps.type,
+                        creationTime: currentTime
+                    });
+                }
+            },
+            experienced_orb: {
+                id: 'experienced_orb', name: 'Experiente', icon: '🌟', description: 'Faz com que 5 orbes de experiência extras apareçam. Ativa-se a cada 10 segundos.',
+                cooldown: 10000, type: 'instant_effect',
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    for (let i = 0; i < 5; i++) {
+                        experienceOrbsRef.push({ x: Math.random() * mapWidth, y: Math.random() * mapHeight, radius: 8, color: 'deepskyblue', value: 20 });
+                    }
+                }
+            },
+            leech: {
+                id: 'leech', name: 'Sanguessuga', icon: '🩸', description: 'Projétil super lento de dano alto que cura pela quantidade de dano causado ao matar. Ativa-se a cada 5 segundos.',
+                cooldown: 5000, type: 'projectile',
+                projectileProps: { radius: 8, speed: 1, color: 'darkred', baseDamage: 100, lifespan: 300, type: 'leech' },
+                trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
+                    const nearestEnemy = getNearestEnemy(playerRef.x, playerRef.y);
+                    const baseAngle = nearestEnemy ? Math.atan2(nearestEnemy.y - playerRef.y, nearestEnemy.x - playerRef.x) : Math.random() * Math.PI * 2;
+                    const dx = Math.cos(baseAngle);
+                    const dy = Math.sin(baseAngle);
+                    projectilesRef.push({
+                        x: playerRef.x, y: player.y,
+                        radius: this.projectileProps.radius,
+                        speed: this.projectileProps.speed,
+                        color: this.projectileProps.color,
+                        damage: this.projectileProps.baseDamage * playerRef.damageMultiplier,
+                        dx: dx, dy: dy,
+                        lifespan: this.projectileProps.lifespan,
+                        type: this.projectileProps.type,
+                        creationTime: currentTime
+                    });
+                }
+            }
+        };
+
+        // Função para redimensionar o canvas dinamicamente com base no tamanho da janela
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9;
+            canvas.height = window.innerHeight * 0.9;
+            // Limita o tamanho do canvas para telas maiores
+            canvas.width = Math.min(canvas.width, 1200);
+            canvas.height = Math.min(canvas.height, 800);
+
+            // Atualiza as dimensões do mapa quando o canvas é redimensionado
+            mapWidth = canvas.width * 2;
+            mapHeight = canvas.height * 2;
+
+            // Se o jogo estiver rodando e nenhum menu estiver aberto, redesenha
+            if (gameRunning && !isLevelingUp && !isChoosingWeapon && !isChoosingInitialWeapon) {
+                draw();
+            }
+            // Centraliza o jogador no mapa se o jogo estiver rodando
+            if (gameRunning && player) {
+                player.x = mapWidth / 2; // Centraliza o jogador no mapa
+                player.y = mapHeight / 2; // Centraliza o jogador no mapa
+            }
+            // Atualiza a altura do projétil Laser se existir
+            if (weapons.laser && weapons.laser.projectileProps) {
+                weapons.laser.projectileProps.height = Math.max(canvas.width, canvas.height) * 1.5;
+            }
+        }
+
+        // Listener de evento para redimensionamento da janela
+        window.addEventListener('resize', resizeCanvas);
+        // Chamada inicial de redimensionamento do canvas
+        resizeCanvas();
+
+        // Objeto para rastrear teclas pressionadas para movimento do jogador
+        let keys = { w: false, a: false, s: false, d: false };
+
+        // Listener de evento para pressionar teclas
+        document.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key.toLowerCase())) {
+                keys[e.key.toLowerCase()] = true;
+                e.preventDefault(); // Previne o comportamento padrão do navegador (ex: rolagem)
+            }
+        });
+
+        // Listener de evento para soltar teclas
+        document.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key.toLowerCase())) {
+                keys[e.key.toLowerCase()] = false;
+            }
+        });
+
+        // Função para exibir uma caixa de mensagem personalizada
+        function showMessageBox(title, text, buttonText, buttonAction) {
+            const msgBox = document.getElementById('message-box');
+            document.getElementById('message-title').innerHTML = title;
+            document.getElementById('message-text').innerHTML = text;
+            const msgButton = document.getElementById('message-button');
+            msgButton.innerText = buttonText;
+            msgButton.onclick = () => {
+                msgBox.style.display = 'none'; // Esconde a caixa de mensagem ao clicar no botão
+                buttonAction(); // Executa a ação fornecida
+            };
+            msgBox.style.display = 'block'; // Exibe a caixa de mensagem
+        }
+
+        // Função para esconder a caixa de mensagem
+        function hideMessageBox() {
+            document.getElementById('message-box').style.display = 'none';
+        }
+
+        // Função para encontrar o inimigo mais próximo de uma dada coordenada (x, y)
+        function getNearestEnemy(x, y) {
+            let nearestEnemy = null;
+            let minDistance = Infinity;
+            if (enemies.length === 0) return null; // Se não houver inimigos, retorna nulo
+            enemies.forEach(enemy => {
+                const distance = Math.sqrt((x - enemy.x) ** 2 + (y - enemy.y) ** 2);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestEnemy = enemy;
+                }
+            });
+            return nearestEnemy;
+        }
+
+        // Função para atualizar a UI de informações do jogo (pontuação, nível, XP)
+        function updateGameInfoUI() {
+            document.getElementById('score-display').innerText = `Pontuação: ${score}`;
+            document.getElementById('level-display').innerText = `Nível: ${currentLevel}`;
+            document.getElementById('xp-display').innerText = `XP: ${currentExperience}/${experienceToNextLevel}`;
+        }
+
+        // Função para exibir o menu de seleção de upgrades
+        function showUpgradeSelection() {
+            hideMessageBox(); // Esconde qualquer caixa de mensagem ativa
+            const upgradeSelectionDiv = document.getElementById('upgrade-selection');
+            const upgradeListDiv = document.getElementById('upgrade-list');
+            upgradeListDiv.innerHTML = ''; // Limpa upgrades anteriores
+            for (const upgradeId in upgrades) {
+                const upgrade = upgrades[upgradeId];
+                const upgradeCard = document.createElement('div');
+                upgradeCard.className = 'upgrade-card';
+                upgradeCard.onclick = () => applyUpgrade(upgrade); // Atribui o manipulador de clique
+                upgradeCard.innerHTML = `<span class="upgrade-icon">${upgrade.icon}</span><h3>${upgrade.name}</h3><p>${upgrade.description}</p>`;
+                upgradeListDiv.appendChild(upgradeCard);
+            }
+            upgradeSelectionDiv.style.display = 'block'; // Exibe a seleção de upgrades
+        }
+
+        // Função para aplicar um upgrade escolhido
+        function applyUpgrade(upgrade) {
+            upgrade.apply(); // Executa a função de aplicação do upgrade
+            // console.log(`Upgrade aplicado: ${upgrade.name}. Velocidade do jogador agora: ${player.speed.toFixed(4)}`); // DEBUG: Log de velocidade após upgrade
+            document.getElementById('upgrade-selection').style.display = 'none'; // Esconde a seleção de upgrades
+            showWeaponSelection(); // Prossegue para a seleção de armas
+        }
+
+        // Função para exibir o menu de seleção de armas
+        function showWeaponSelection() {
+            isChoosingWeapon = true; // Define a flag de que estamos escolhendo uma arma
+            document.getElementById('upgrade-selection').style.display = 'none'; // Esconde o menu de upgrades
+            const weaponSelectionDiv = document.getElementById('weapon-selection');
+            const weaponListDiv = document.getElementById('weapon-list');
+            weaponListDiv.innerHTML = ''; // Limpa armas anteriores
+
+            const potentialWeaponChoices = [];
+
+            // Adiciona a próxima opção de upgrade de ataque básico se não estiver no nível máximo e o personagem não for 'teste'
+            if (selectedCharacter.id !== 'teste' && player.basicAttackLevel < 5) {
+                const nextBasicAttackLevelId = `basic_attack_level_${player.basicAttackLevel + 1}`;
+                if (weapons[nextBasicAttackLevelId]) {
+                    potentialWeaponChoices.push(nextBasicAttackLevelId);
+                }
+            }
+
+            // Adiciona outras armas, excluindo upgrades de ataque básico e armas já ativas
+            for (const weaponId in weapons) {
+                const weapon = weapons[weaponId];
+                if (!weaponId.startsWith('basic_attack_level_') && !player.activeWeapons.some(w => w.id === weaponId)) {
+                    potentialWeaponChoices.push(weaponId);
+                }
+            }
+
+            // Embaralha todas as escolhas potenciais
+            const shuffledWeaponChoices = potentialWeaponChoices.sort(() => 0.5 - Math.random());
+
+            // Seleciona até 3 opções distintas
+            const selectedWeaponIds = shuffledWeaponChoices.slice(0, 3);
+
+            selectedWeaponIds.forEach(weaponId => {
+                const weapon = weapons[weaponId];
+                const weaponCard = document.createElement('div');
+                weaponCard.className = 'upgrade-card';
+                weaponCard.onclick = () => selectWeapon(weapon); // Atribui o manipulador de clique
+                weaponCard.innerHTML = `<span class="upgrade-icon">${weapon.icon}</span><h3>${weapon.name}</h3><p>${weapon.description}</p>`;
+                weaponListDiv.appendChild(weaponCard);
+            });
+            weaponSelectionDiv.style.display = 'block'; // Exibe a seleção de armas
+        }
+
+        // Função para selecionar uma arma durante o level up
+        function selectWeapon(weapon) {
+            if (weapon.type === 'basic_attack_level_up') { // Lida com o upgrade de ataque básico
+                weapon.trigger(player); // Ativa a lógica de nível para o ataque básico
+            } else {
+                // Verifica se o jogador já possui esta arma
+                let existingWeapon = player.activeWeapons.find(w => w.id === weapon.id);
+                if (!existingWeapon) {
+                    // Se não, adiciona às armas ativas com suas propriedades e funções trigger/onEnd vinculadas
+                    const newActiveWeapon = {
+                        id: weapon.id,
+                        name: weapon.name,
+                        cooldown: weapon.cooldown,
+                        lastActivatedTime: 0,
+                        duration: weapon.duration || 0,
+                        isActive: false, // Para efeitos temporizados, indica se está atualmente ativo
+                        type: weapon.type,
+                        trigger: weapon.trigger.bind(weapon), // Vincula 'this' ao objeto da arma
+                        projectileProps: weapon.projectileProps ? { ...weapon.projectileProps } : null,
+                        onEnd: weapon.onEnd ? weapon.onEnd.bind(weapon) : null // Vincula 'this' para onEnd se existir
+                    };
+                    player.activeWeapons.push(newActiveWeapon);
+                    // Se for um efeito permanente, o ativa imediatamente
+                    if (newActiveWeapon.type === 'permanent_effect') {
+                        newActiveWeapon.trigger(player, performance.now(), enemies, projectiles, activeAuras, explosions, experienceOrbs);
+                    }
+                }
+            }
+            // console.log(`Arma selecionada: ${weapon.name}. Velocidade do jogador agora: ${player.speed.toFixed(4)}`); // DEBUG: Log de velocidade após seleção de arma
+            document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
+            isChoosingWeapon = false; // Reseta a flag
+            isLevelingUp = false; // Reseta a flag de level up
+            gameLoop(); // Retoma o loop do jogo
+        }
+
+        // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
+        function showInitialWeaponSelection() {
+            isChoosingInitialWeapon = true; // Define a flag
+            document.getElementById('character-selection').style.display = 'none'; // Esconde a seleção de personagens
+            const initialWeaponSelectionDiv = document.getElementById('initial-weapon-selection');
+            const initialWeaponListDiv = document.getElementById('initial-weapon-list');
+            initialWeaponListDiv.innerHTML = ''; // Limpa armas anteriores
+            const allWeaponIds = Object.keys(weapons);
+            // Filtra as opções de upgrade de ataque básico para o personagem 'teste'
+            const initialWeaponsForTeste = allWeaponIds.filter(weaponId => !weaponId.startsWith('basic_attack_level_'));
+
+            initialWeaponsForTeste.forEach(weaponId => {
+                const weapon = weapons[weaponId];
+                const weaponCard = document.createElement('div');
+                weaponCard.className = 'upgrade-card';
+                weaponCard.onclick = () => selectInitialWeapon(weapon); // Atribui o manipulador de clique
+                weaponCard.innerHTML = `<span class="upgrade-icon">${weapon.icon}</span><h3>${weapon.name}</h3><p>${weapon.description}</p>`;
+                initialWeaponListDiv.appendChild(weaponCard);
+            });
+            initialWeaponSelectionDiv.style.display = 'block'; // Exibe a seleção de arma inicial
+        }
+
+        // Função para selecionar a arma inicial para o personagem 'teste'
+        function selectInitialWeapon(weapon) {
+            // Adiciona a arma inicial escolhida
+            const newActiveWeapon = {
+                id: weapon.id,
+                name: weapon.name,
+                cooldown: weapon.cooldown,
+                lastActivatedTime: 0,
+                duration: weapon.duration || 0,
+                isActive: false,
+                type: weapon.type,
+                trigger: weapon.trigger.bind(weapon),
+                projectileProps: weapon.projectileProps ? { ...weapon.projectileProps } : null,
+                onEnd: weapon.onEnd ? weapon.onEnd.bind(weapon) : null
+            };
+            player.activeWeapons.push(newActiveWeapon);
+            if (newActiveWeapon.type === 'permanent_effect') {
+                newActiveWeapon.trigger(player, performance.now(), enemies, projectiles, activeAuras, explosions, experienceOrbs);
+            }
+            document.getElementById('initial-weapon-selection').style.display = 'none'; // Esconde a seleção de arma inicial
+            isChoosingInitialWeapon = false; // Reseta a flag
+            initGame(); // Inicializa o jogo
+        }
+
+        // Função para lidar com o level up do jogador
+        function levelUp() {
+            currentLevel++; // Aumenta o nível
+            currentExperience -= experienceToNextLevel; // Deduz o XP necessário para o level up
+            experienceToNextLevel = Math.floor(experienceToNextLevel * 1.2); // Aumenta o XP necessário para o próximo nível
+            updateGameInfoUI(); // Atualiza a UI
+            isLevelingUp = true; // Define a flag para pausar o jogo e exibir o menu de level up
+            // console.log(`LEVEL UP! Nível do jogador: ${currentLevel}. Velocidade do jogador antes dos upgrades: ${player.speed.toFixed(4)}`); // DEBUG: Log de velocidade antes dos upgrades
+            showMessageBox('Nível Atingido!', `Chegou ao Nível ${currentLevel}! Escolha uma melhoria de atributo:`, 'Escolher Atributo', showUpgradeSelection);
+        }
+
+        // Função para exibir o menu de seleção de personagens
+        function showCharacterSelection() {
+            hideMessageBox(); // Esconde qualquer caixa de mensagem ativa
+            const charSelectionDiv = document.getElementById('character-selection');
+            const charListDiv = document.getElementById('character-list');
+            charListDiv.innerHTML = ''; // Limpa personagens anteriores
+            for (const charId in characters) {
+                const char = characters[charId];
+                const charCard = document.createElement('div');
+                charCard.className = 'character-card';
+                charCard.onclick = () => { selectCharacter(char); }; // Atribui o manipulador de clique
+
+                // Verifica se a sprite sheet é usada para este personagem
+                if (char.spriteSheetUrl) {
+                    const img = assetLoader.getImage(`${char.id}_sheet`);
+                    if (img && char.spriteFrames && char.spriteFrames.down) {
+                         // Usa o quadro 'down' para exibição na seleção de personagem
+                        const frame = char.spriteFrames.down;
+                        // Cria um canvas temporário para desenhar o quadro específico para o ícone do cartão
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = frame.sWidth;
+                        tempCanvas.height = frame.sHeight;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.imageSmoothingEnabled = false;
+                        tempCtx.drawImage(img, frame.sx, frame.sy, frame.sWidth, frame.sHeight, 0, 0, frame.sWidth, frame.sHeight);
+                        charCard.innerHTML = `<img src="${tempCanvas.toDataURL()}" alt="${char.name}" style="width: 48px; height: 48px; margin-bottom: 5px; image-rendering: pixelated;"><h3>${char.name}</h3><p>${char.description}</p>`;
+                    } else {
+                        // Fallback para emoji se a sprite sheet for especificada, mas os dados do quadro estiverem faltando ou a imagem não for carregada
+                        charCard.innerHTML = `<span class="char-icon">${char.icon}</span><h3>${char.name}</h3><p>${char.description}</p>`;
+                    }
+                } else {
+                    // Fallback para ícone emoji se nenhuma sprite sheet for especificada
+                    charCard.innerHTML = `<span class="char-icon">${char.icon}</span><h3>${char.name}</h3><p>${char.description}</p>`;
+                }
+                charListDiv.appendChild(charCard);
+            }
+            charSelectionDiv.style.display = 'block'; // Exibe a seleção de personagens
+        }
+
+        // Função para selecionar um personagem
+        function selectCharacter(char) {
+            selectedCharacter = char; // Define o personagem selecionado globalmente
+            document.getElementById('character-selection').style.display = 'none'; // Esconde a seleção de personagens
+
+            // Inicializa o nível de ataque básico com base no personagem
+            if (selectedCharacter.id !== 'teste') {
+                player.basicAttackLevel = 1;
+            } else {
+                player.basicAttackLevel = 0; // O personagem de teste não usa escalonamento de nível de ataque básico
+            }
+
+            // Se o personagem "Teste" for selecionado, exibe a seleção de arma inicial
+            if (selectedCharacter.id === 'teste') {
+                showInitialWeaponSelection();
+            } else {
+                initGame(); // Caso contrário, inicializa o jogo diretamente
+            }
+            // console.log(`Personagem selecionado: ${selectedCharacter.name}. Velocidade inicial do jogador: ${player.speed.toFixed(4)}`); // DEBUG: Log de velocidade inicial
+        }
+
+        // Função para inicializar ou resetar o estado do jogo
+        function initGame() {
+            // Redefine a posição e propriedades do jogador com base no personagem selecionado
+            player.x = mapWidth / 2; // Posição central do mapa
+            player.y = mapHeight / 2; // Posição central do mapa
+            player.speed = selectedCharacter.playerSpeed; // Define a velocidade do jogador baseada no personagem
+            player.color = selectedCharacter.playerColor;
+            player.health = 100;
+            player.maxHealth = 100;
+            player.damageMultiplier = 1.0;
+            player.collectionRadiusMultiplier = 1.0;
+            player.baseProjectileDamage = 5;
+            player.projectileCountMultiplier = 1; // Isso agora se aplica a outras armas, não à contagem de ataque básico
+            // player.basicAttackLevel já é definido em selectCharacter
+
+            player.useSprite = false;
+            player.spriteSheet = null; // Garante que a referência da sprite sheet seja nula até ser carregada
+            player.direction = 'down';
+            player.isMoving = false;
+
+            // Reseta as propriedades de invulnerabilidade
+            player.isInvulnerable = false;
+            player.invulnerabilityStartTime = 0;
+
+            // Carrega a sprite sheet do personagem se disponível
+            if (selectedCharacter.spriteSheetUrl) {
+                player.spriteSheet = assetLoader.getImage(`${selectedCharacter.id}_sheet`); // Obtém a imagem da sprite sheet carregada
+                if (player.spriteSheet) {
+                    player.spriteWidth = selectedCharacter.spriteWidth;
+                    player.spriteHeight = selectedCharacter.spriteHeight;
+                    player.useSprite = true; // Habilita a renderização da sprite
+                }
+            }
+
+            // Limpa as armas ativas, a menos que o personagem 'teste' tenha sido selecionado (que já escolheu uma)
+            if (selectedCharacter.id !== 'teste') {
+                player.activeWeapons = [];
+            }
+            player.hasShield = false;
+            player.lastShieldUsedTime = 0;
+
+            // Limpa todas as entidades do jogo
+            projectiles = [];
+            enemies = [];
+            experienceOrbs = [];
+            activeAuras = [];
+            explosions = [];
+
+            // Redefine as estatísticas do jogo
+            score = 0;
+            currentExperience = 0;
+            currentLevel = 1;
+            experienceToNextLevel = 100;
+
+            // Redefine as flags de estado do jogo
+            isLevelingUp = false;
+            isChoosingWeapon = false;
+            isChoosingInitialWeapon = false;
+
+            // Redefine temporizadores e parâmetros de spawn de inimigos
+            lastBasicAttackTime = 0; // Usado para o cooldown do ataque básico
+            lastEnemySpawnTime = 0;
+            enemySpawnInterval = 800;
+            enemySpeed = 1; // Redefine a velocidade do inimigo para o valor inicial
+
+            // Inicializa o rastreamento de tempo para o aumento de velocidade dos inimigos
+            gameStartTime = performance.now();
+            lastTimeBasedSpeedIncrease = gameStartTime;
+
+            updateGameInfoUI(); // Atualiza a UI com as estatísticas iniciais
+            gameRunning = true; // Define o jogo como rodando
+            gameLoop(); // Inicia o loop do jogo
+        }
+
+        // Função para desenhar o jogador no canvas
+        function drawPlayer() {
+            ctx.imageSmoothingEnabled = false; // Para que a arte em pixel apareça nítida
+
+            // Ajusta a posição de desenho do jogador pela câmera
+            const drawX = player.x - cameraX;
+            const drawY = player.y - cameraY;
+
+            // Lógica de piscar para invulnerabilidade
+            if (player.isInvulnerable && Math.floor(performance.now() / 100) % 2 === 0) {
+                // Se invulnerável e no "quadro" certo, não desenha o jogador (ou desenha transparente)
+                ctx.globalAlpha = 0;
+            }
+
+
+            if (player.useSprite && player.spriteSheet && selectedCharacter.spriteFrames) {
+                const frame = selectedCharacter.spriteFrames[player.direction];
+                if (frame) {
+                    ctx.drawImage(
+                        player.spriteSheet,
+                        frame.sx, frame.sy, frame.sWidth, frame.sHeight,
+                        drawX - player.spriteWidth / 2, drawY - player.spriteHeight / 2,
+                        player.spriteWidth, player.spriteHeight
+                    );
+                } else {
+                    console.warn(`No sprite frame defined for direction: ${player.direction} for character ${selectedCharacter.id}`);
+                    ctx.beginPath();
+                    ctx.arc(drawX, drawY, player.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = player.color;
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+            } else {
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, player.radius, 0, Math.PI * 2);
+                ctx.fillStyle = player.color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+            ctx.globalAlpha = 1; // Sempre reseta o alpha para 1 após desenhar o jogador
+
+            // Desenha o efeito de escudo se ativo
+            if (player.hasShield) {
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, player.radius + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+                ctx.lineWidth = 5;
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        // Função para desenhar projéteis no canvas
+        function drawProjectiles() {
+            projectiles.forEach(p => {
+                if (p.creationTime && performance.now() < p.creationTime) {
+                    return;
+                }
+
+                // Ajusta a posição de desenho do projétil pela câmera
+                const drawX = p.x - cameraX;
+                const drawY = p.y - cameraY;
+
+                if (p.type === 'sprite_projectile' && p.sprite) {
+                    ctx.drawImage(p.sprite, drawX - p.width / 2, drawY - p.height / 2, p.width, p.height);
+                } else if (p.type === 'laser') {
+                    ctx.save(); // Salva o estado atual do canvas
+                    ctx.translate(drawX, drawY); // Move a origem para o centro do projétil
+                    ctx.rotate(p.angle); // Rotaciona pelo ângulo do projétil
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
+                    ctx.restore(); // Restaura o estado do canvas
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(drawX, drawY, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    if (p.type === 'orbiting') {
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                    ctx.closePath();
+                }
+            });
+        }
+
+        // Função para desenhar inimigos no canvas
+        function drawEnemies() {
+            enemies.forEach(e => {
+                // Ajusta a posição de desenho do inimigo pela câmera
+                const drawX = e.x - cameraX;
+                const drawY = e.y - cameraY;
+
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, e.radius, 0, Math.PI * 2);
+                ctx.fillStyle = e.color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+
+                const barWidth = e.radius * 2 * 0.8;
+                const barHeight = 4;
+                const barX = drawX - barWidth / 2;
+                const barY = drawY - e.radius - 8;
+                ctx.fillStyle = '#555';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                const healthPercentage = e.health / e.maxHealth;
+                let barColor = 'lime';
+                if (healthPercentage < 0.6) barColor = 'yellow';
+                if (healthPercentage < 0.3) barColor = 'red';
+                ctx.fillStyle = barColor;
+                ctx.fillRect(barX, barY, barWidth * healthPercentage, barHeight);
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            });
+        }
+
+        // Função para desenhar a barra de vida do jogador
+        function drawHealthBar(x, y, currentHealth, maxHealth) {
+            // Ajusta a posição de desenho da barra de vida pela câmera
+            const drawX = x - cameraX;
+            const drawY = y - cameraY;
+
+            const barWidth = 40;
+            const barHeight = 6;
+            const yOffset = player.useSprite ? player.spriteHeight / 2 : player.radius;
+            const barX = drawX - barWidth / 2;
+            const barY = drawY - yOffset - 15;
+            ctx.fillStyle = '#555';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            const healthPercentage = currentHealth / maxHealth;
+            const currentBarWidth = barWidth * healthPercentage;
+            if (healthPercentage > 0.6) { ctx.fillStyle = '#0F0'; } else if (healthPercentage > 0.3) { ctx.fillStyle = '#FFD700'; } else { ctx.fillStyle = '#F00'; }
+            ctx.fillRect(barX, barY, currentBarWidth, barHeight);
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+
+        // Função para desenhar orbes de experiência
+        function drawExperienceOrbs() {
+            experienceOrbs.forEach(orb => {
+                // Ajusta a posição de desenho do orbe pela câmera
+                const drawX = orb.x - cameraX;
+                const drawY = orb.y - cameraY;
+
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, orb.radius, 0, Math.PI * 2);
+                ctx.fillStyle = orb.color;
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        // Função para desenhar vários efeitos de jogo (explosões, auras)
+        function drawEffects() {
+            explosions.forEach(effect => {
+                // Ajusta a posição de desenho do efeito pela câmera
+                const drawX = effect.x - cameraX;
+                const drawY = effect.y - cameraY;
+
+                ctx.beginPath();
+                if (effect.type === 'flash') {
+                    ctx.arc(drawX, drawY, effect.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = effect.color;
+                    ctx.globalAlpha = effect.alpha || 1;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else if (effect.type === 'explosion') {
+                    ctx.arc(drawX, drawY, effect.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 100, 0, 0.7)';
+                    ctx.fill();
+                }
+                ctx.closePath();
+            });
+            activeAuras.forEach(aura => {
+                if (aura.type === 'timed_aura_damage') {
+                    // Auras são desenhadas em relação à posição do jogador, que já é compensada pela câmera.
+                    // Portanto, as coordenadas de desenho da aura também precisam ser ajustadas.
+                    const auraDrawX = player.x - cameraX;
+                    const auraDrawY = player.y - cameraY;
+
+                    ctx.beginPath();
+                    ctx.arc(auraDrawX, auraDrawY, aura.visualRadius, 0, Math.PI * 2);
+                    ctx.strokeStyle = aura.color;
+                    ctx.lineWidth = 5;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.fillStyle = `rgba(0, 0, 139, 0.2)`;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.closePath();
+                }
+            });
+        }
+
+        // Função para lidar com o spawn do projétil primário do jogador (ataque básico)
+        function spawnProjectile(currentTime) {
+            // Somente dispara ataque básico se o personagem não for 'teste' e o cooldown for atendido
+            if (selectedCharacter.id !== 'teste' && (currentTime - lastBasicAttackTime > selectedCharacter.baseAttackInterval)) {
+                lastBasicAttackTime = currentTime; // Reinicia o timer de cooldown
+
+                const baseRadius = selectedCharacter.baseProjectileRadius;
+                // Calcula o raio do projétil escalado com base no nível de ataque básico
+                const scaledRadius = baseRadius * (1 + (player.basicAttackLevel - 1) * 0.05);
+
+                const baseDamage = player.baseProjectileDamage * player.damageMultiplier;
+
+                // Loop para disparar múltiplos projéteis com base no basicAttackLevel
+                for (let i = 0; i < player.basicAttackLevel; i++) {
+                    const delay = i * 500; // 0.5 seconds delay per extra projectile
+                    const projectileSpawnTime = currentTime + delay;
+
+                    // Determina o alvo/direção para o projétil
+                    const nearestEnemy = getNearestEnemy(player.x, player.y);
+                    let baseAngle = nearestEnemy ? Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x) : Math.random() * Math.PI * 2;
+                    let dx, dy;
+
+                    // Lógica de projétil específica do personagem, ajustada para scaledRadius
+                    switch (selectedCharacter.id) {
+                        case 'andywn':
+                            const projectileSprite = assetLoader.getImage('andywn_projectile');
+                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            projectiles.push({
+                                x: player.x, y: player.y, // Posição do projétil no mapa
+                                radius: scaledRadius, // Usa raio escalado
+                                speed: selectedCharacter.projectileSpeed,
+                                damage: baseDamage,
+                                dx: dx, dy: dy,
+                                type: 'sprite_projectile', sprite: projectileSprite,
+                                // Escala as dimensões da sprite com base no escalonamento do raio
+                                width: selectedCharacter.projectileSpriteWidth * (scaledRadius / baseRadius),
+                                height: selectedCharacter.projectileSpriteHeight * (scaledRadius / baseRadius),
+                                creationTime: projectileSpawnTime // Define o tempo de criação para aparência escalonada
+                            });
+                            break;
+                        case 'kazu':
+                        case 'gaeru':
+                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            projectiles.push({
+                                x: player.x, y: player.y, // Posição do projétil no mapa
+                                radius: scaledRadius,
+                                speed: selectedCharacter.projectileSpeed,
+                                color: selectedCharacter.projectileColor,
+                                damage: baseDamage,
+                                dx: dx, dy: dy,
+                                type: 'normal',
+                                creationTime: projectileSpawnTime
+                            });
+                            break;
+                        case 'raime':
+                            const numPunches = 5;
+                            const arcAngle = Math.PI * 0.8;
+                            for (let j = 0; j < numPunches; j++) {
+                                const spreadAngle = baseAngle - (arcAngle / 2) + (j * arcAngle / (numPunches - 1));
+                                dx = Math.cos(spreadAngle); dy = Math.sin(spreadAngle);
+                                projectiles.push({
+                                    x: player.x, y: player.y, // Posição do projétil no mapa
+                                    radius: scaledRadius,
+                                    speed: selectedCharacter.projectileSpeed,
+                                    color: selectedCharacter.projectileColor,
+                                    damage: baseDamage,
+                                    dx: dx, dy: dy,
+                                    type: 'melee', initialX: player.x, initialY: player.y, maxTravelDistance: selectedCharacter.projectileMaxTravelDistance,
+                                    creationTime: projectileSpawnTime
+                                });
+                            }
+                            break;
+                        case 'thorne':
+                            const diagonalAngles = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
+                            diagonalAngles.forEach(angle => {
+                                dx = Math.cos(angle); dy = Math.sin(angle);
+                                projectiles.push({
+                                    x: player.x, y: player.y, // Posição do projétil no mapa
+                                    radius: scaledRadius,
+                                    speed: selectedCharacter.projectileSpeed,
+                                    color: selectedCharacter.projectileColor,
+                                    damage: baseDamage,
+                                    dx: dx, dy: dy,
+                                    type: 'normal',
+                                    creationTime: projectileSpawnTime
+                                });
+                            });
+                            break;
+                        case 'general':
+                            const numShots = 3;
+                            const fanAngle = Math.PI / 8;
+                            for (let j = 0; j < numShots; j++) {
+                                const spread = baseAngle - (fanAngle / 2) + (j * fanAngle / (numShots - 1));
+                                dx = Math.cos(spread); dy = Math.sin(spread);
+                                projectiles.push({
+                                    x: player.x, y: player.y, // Posição do projétil no mapa
+                                    radius: scaledRadius,
+                                    speed: selectedCharacter.projectileSpeed,
+                                    color: selectedCharacter.projectileColor,
+                                    damage: baseDamage,
+                                    dx: dx, dy: dy,
+                                    type: 'normal',
+                                    creationTime: projectileSpawnTime
+                                });
+                            }
+                            break;
+                        case 'ito':
+                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            // Raio aleatório para projéteis de Ito, também escalado pelo nível de ataque básico
+                            const randomBaseRadius = selectedCharacter.projectileMinRadius + (Math.random() * (selectedCharacter.projectileMaxRadius - selectedCharacter.projectileMinRadius));
+                            const randomScaledRadius = randomBaseRadius * (1 + (player.basicAttackLevel - 1) * 0.05);
+                            projectiles.push({
+                                x: player.x, y: player.y, // Posição do projétil no mapa
+                                radius: randomScaledRadius,
+                                speed: selectedCharacter.projectileSpeed,
+                                color: selectedCharacter.projectileColor,
+                                damage: baseDamage,
+                                dx: dx, dy: dy,
+                                lifespan: selectedCharacter.projectileLifespan,
+                                type: 'normal',
+                                creationTime: projectileSpawnTime
+                            });
+                            break;
+                    }
+                }
+            }
+        }
+
+        // Função para lidar com o spawn de inimigos
+        function spawnEnemy(currentTime) {
+            if (currentTime - lastEnemySpawnTime > enemySpawnInterval) {
+                let x, y;
+                const padding = 50;
+                const side = Math.floor(Math.random() * 4);
+                // Gera a posição inicial do inimigo fora das bordas do MAPA
+                switch (side) {
+                    case 0: x = Math.random() * mapWidth; y = -padding; break; // Topo do mapa
+                    case 1: x = mapWidth + padding; y = Math.random() * mapHeight; break; // Direita do mapa
+                    case 2: x = Math.random() * mapWidth; y = mapHeight + padding; break; // Fundo do mapa
+                    case 3: x = -padding; y = Math.random() * mapHeight; break; // Esquerda do mapa
+                }
+                const enemyInitialHealth = 10 + (currentLevel * 2) + (Math.floor(Math.random() * 20) + 1);
+                const enemyCurrentSpeed = enemySpeed * ((Math.random() * 1.4 + 0.1));
+                const enemyCurrentRadius = player.radius * ((Math.random() * 2.95) + 0.05);
+                enemies.push({ x: x, y: y, radius: enemyCurrentRadius, speed: enemyCurrentSpeed, color: 'red', health: enemyInitialHealth, maxHealth: enemyInitialHealth });
+                lastEnemySpawnTime = currentTime;
+                if (enemySpawnInterval > 250) enemySpawnInterval -= 5;
+            }
+        }
+
+        // Lógica principal de atualização do jogo
+        function update(currentTime) {
+            // Pausa a atualização se o jogo não estiver rodando ou um menu estiver aberto
+            if (!gameRunning || isLevelingUp || isChoosingWeapon || isChoosingInitialWeapon) return;
+
+            // Aplica o aumento de velocidade dos inimigos baseado no tempo
+            if (currentTime - lastTimeBasedSpeedIncrease >= TIME_INTERVAL_FOR_SPEED_INCREASE) {
+                enemySpeed *= (1 + SPEED_INCREASE_PERCENTAGE);
+                lastTimeBasedSpeedIncrease = currentTime;
+                // console.log(`Enemy speed increased to: ${enemySpeed.toFixed(2)}`); // Log para depuração
+            }
+
+            // Lógica de invulnerabilidade do jogador
+            if (player.isInvulnerable && (currentTime - player.invulnerabilityStartTime) >= player.invulnerabilityDuration) {
+                player.isInvulnerable = false; // Desativa invulnerabilidade
+            }
+
+            let dx = 0, dy = 0;
+            if (keys.w) dy -= 1;
+            if (keys.s) dy += 1;
+            if (keys.a) dx -= 1;
+            if (keys.d) dx += 1;
+
+            player.isMoving = (dx !== 0 || dy !== 0);
+            if (player.isMoving) {
+                if (dy < 0) { player.direction = 'up'; }
+                else if (dy > 0) { player.direction = 'down'; }
+                else if (dx < 0) { player.direction = 'left'; }
+                else if (dx > 0) { player.direction = 'right'; }
+
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const moveAmount = (len === 0) ? 0 : (player.speed / len); // Evita divisão por zero
+                player.x += dx * moveAmount;
+                player.y += dy * moveAmount;
+            }
+
+            // Limita a posição do jogador dentro dos limites do MAPA
+            player.x = Math.max(player.radius, Math.min(mapWidth - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(mapHeight - player.radius, player.y));
+
+            // Atualiza a posição da câmera para seguir o jogador
+            cameraX = player.x - canvas.width / 2;
+            cameraY = player.y - canvas.height / 2;
+
+            // Garante que a câmera não saia dos limites do mapa
+            cameraX = Math.max(0, Math.min(mapWidth - canvas.width, cameraX));
+            cameraY = Math.max(0, Math.min(mapHeight - canvas.height, cameraY));
+
+            // Atualiza armas ativas
+            player.activeWeapons.forEach(weapon => {
+                if (weapon.type === 'passive_effect') {
+                    if (!player.hasShield && (currentTime - player.lastShieldUsedTime) >= weapon.cooldown) {
+                        player.hasShield = true;
+                    }
+                }
+                else if (weapon.type !== 'permanent_effect' && weapon.type !== 'basic_attack_level_up' && (currentTime - weapon.lastActivatedTime) >= weapon.cooldown) {
+                    weapon.trigger(player, currentTime, enemies, projectiles, activeAuras, explosions, experienceOrbs);
+                    weapon.lastActivatedTime = currentTime;
+                }
+            });
+
+            // Atualiza e filtra auras ativas
+            activeAuras = activeAuras.filter(effect => {
+                if (effect.endTime && currentTime >= effect.endTime) {
+                    if(effect.onEnd) effect.onEnd(player);
+                    return false;
+                }
+                if (effect.type === 'timed_aura_damage' && currentTime >= effect.nextDamageTime) {
+                    enemies.forEach((enemy) => {
+                        // Colisão da aura agora considera a posição relativa do inimigo ao jogador (centro da aura)
+                        const distance = Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2);
+                        if (distance < effect.radius + enemy.radius) {
+                            enemy.health -= effect.damage * player.damageMultiplier;
+                            if (enemy.health <= 0) {
+                                enemiesToRemove.add(enemy);
+                                score += Math.round(10 * player.damageMultiplier);
+                                orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            }
+                        }
+                    });
+                    effect.nextDamageTime = currentTime + effect.tickInterval;
+                }
+                return true;
+            });
+
+            // Atualiza e filtra projéteis
+            projectiles = projectiles.filter(p => {
+                if (p.creationTime && currentTime < p.creationTime) {
+                    return true;
+                }
+
+                if (p.type === 'orbiting') {
+                    p.currentOrbitAngle += p.orbitSpeed;
+                    p.x = player.x + Math.cos(p.currentOrbitAngle) * p.orbitRadius;
+                    p.y = player.y + Math.sin(p.currentOrbitAngle) * p.orbitRadius;
+                }
+                else if (p.type === 'figure_eight') {
+                    const elapsedTime = currentTime - p.loopStartTime;
+                    if (elapsedTime >= p.loopDuration) return false;
+                    const timeRatio = elapsedTime / p.loopDuration;
+                    const angle = timeRatio * Math.PI * 2;
+                    p.x = p.initialX + Math.sin(angle) * p.loopSizeX;
+                    p.y = p.initialY + Math.sin(angle * 2) * p.loopSizeY;
+                }
+                else {
+                    p.x += (p.dx || 0) * p.speed;
+                    p.y += (p.dy || 0) * p.speed;
+                }
+
+                if (p.lifespan !== undefined) {
+                    p.lifespan--;
+                    return p.lifespan > 0;
+                }
+                if (p.type === 'bomb') {
+                    p.fuseTime--;
+                    if (p.fuseTime <= 0) {
+                        explosions.push({ x: p.x, y: p.y, radius: p.explosionRadius, damage: p.explosionDamage, duration: 1, type: 'explosion' });
+                        return false;
+                    }
+                    return true;
+                }
+                if (p.type === 'melee') {
+                    const dist = Math.sqrt((p.x - p.initialX)**2 + (p.y - p.initialY)**2);
+                    return dist < p.maxTravelDistance;
+                }
+                // Projéteis devem ser removidos se saírem dos limites do MAPA (não da tela visível)
+                return p.x > -p.radius && p.x < mapWidth + p.radius && p.y > -p.radius && p.y < mapHeight + p.radius;
+            });
+
+            // Atualiza e filtra explosões
+            explosions = explosions.filter(effect => {
+                if (effect.type === 'explosion') {
+                    enemies.forEach((enemy) => {
+                        if (Math.sqrt((effect.x - enemy.x) ** 2 + (effect.y - enemy.y) ** 2) < effect.radius + enemy.radius) {
+                            enemy.health -= effect.damage;
+                            if (enemy.health <= 0) {
+                                enemiesToRemove.add(enemy);
+                                score += Math.round(10 * player.damageMultiplier);
+                                orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            }
+                        }
+                    });
+                }
+                effect.duration--;
+                if (effect.type === 'flash') effect.alpha = Math.max(0, (effect.alpha || 1) - 0.2);
+                return effect.duration > 0;
+            });
+
+            // Atualiza posições dos inimigos e lida com colisões
+            enemies.forEach((enemy) => {
+                // Move inimigo em direção ao jogador no MAPA
+                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                enemy.x += Math.cos(angle) * enemy.speed;
+                enemy.y += Math.sin(angle) * enemy.speed;
+
+                // Colisões projétil-inimigo
+                projectiles.forEach((p) => {
+                    if (p.creationTime && currentTime < p.creationTime) {
+                        return;
+                    }
+
+                    const projectileEffectiveRadius = p.radius !== undefined ? p.radius : p.width / 2;
+                    if (Math.sqrt((p.x - enemy.x) ** 2 + (p.y - enemy.y) ** 2) < projectileEffectiveRadius + enemy.radius) {
+                        enemy.health -= p.damage;
+                        if (!['laser', 'figure_eight', 'melee', 'orbiting', 'sprite_projectile'].includes(p.type)) {
+                            projectilesToRemove.add(p);
+                        }
+                        if (enemy.health <= 0) {
+                            enemiesToRemove.add(enemy);
+                            score += Math.round(10 * player.damageMultiplier);
+                            orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            if (p.type === 'leech') player.health = Math.min(player.health + p.damage, player.maxHealth);
+                        }
+                    }
+                });
+
+                // Colisões jogador-inimigo
+                if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < player.radius + enemy.radius) {
+                    if (!player.isInvulnerable) { // Só recebe dano se não estiver invulnerável
+                        if (player.hasShield) {
+                            player.hasShield = false; // Consome escudo
+                            player.lastShieldUsedTime = currentTime; // Inicia cooldown do escudo
+                            // O inimigo NÃO é removido aqui, ele continua vivo
+                        }
+                        else {
+                            player.health -= enemyDamageToPlayer; // Recebe dano
+                            player.isInvulnerable = true; // Torna-se invulnerável
+                            player.invulnerabilityStartTime = currentTime; // Registra o início da invulnerabilidade
+                        }
+
+                        // Verifica Game Over após receber dano
+                        if (player.health <= 0) {
+                            gameRunning = false;
+                            showMessageBox('Fim de Jogo!', `A sua pontuação final: ${score}<br>Foi derrotado.`, 'Jogar Novamente', showCharacterSelection);
+                        }
+                    }
+                }
+            });
+
+            experienceOrbs.push(...orbsToSpawn);
+            orbsToSpawn = [];
+            projectiles = projectiles.filter(p => !projectilesToRemove.has(p));
+            projectilesToRemove.clear();
+            enemies = enemies.filter(e => !enemiesToRemove.has(e));
+            enemiesToRemove.clear();
+
+            experienceOrbs = experienceOrbs.filter(orb => {
+                // Colisão do orbe com o raio de coleta do jogador
+                if (Math.sqrt((player.x - orb.x) ** 2 + (player.y - orb.y) ** 2) < player.radius * player.collectionRadiusMultiplier + orb.radius) {
+                    currentExperience += orb.value;
+                    return false;
+                }
+                return true;
+            });
+
+            if (currentExperience >= experienceToNextLevel) {
+                levelUp();
+                if (isLevelingUp) return;
+            }
+
+            updateGameInfoUI();
+            spawnProjectile(currentTime);
+            spawnEnemy(currentTime);
+        }
+
+        // Lógica principal de desenho do jogo
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+            drawExperienceOrbs(); // Desenha orbes
+            drawPlayer(); // Desenha jogador (agora com lógica de sprite sheet e câmera)
+            drawProjectiles(); // Desenha projéteis (agora com lógica de câmera)
+            drawEnemies(); // Desenha inimigos (agora com lógica de câmera)
+            drawHealthBar(player.x, player.y, player.health, player.maxHealth); // Desenha barra de vida (agora com lógica de câmera)
+            drawEffects(); // Desenha explosões e auras (agora com lógica de câmera)
+        }
+
+        // Função de loop do jogo (recursiva via requestAnimationFrame)
+        function gameLoop(currentTime) {
+            if (gameRunning && !isLevelingUp && !isChoosingWeapon && !isChoosingInitialWeapon) {
+                update(currentTime);
+                draw();
+            } else if (isLevelingUp || isChoosingWeapon || isChoosingInitialWeapon) {
+                // Se um menu estiver aberto, apenas desenha (para exibir o menu sobre o jogo pausado)
+                draw();
+            }
+            requestAnimationFrame(gameLoop); // Solicita o próximo quadro de animação
+        }
+
+        // Configuração inicial quando a janela é carregada
+        window.onload = function() {
+            // Pré-carrega as sprite sheets dos personagens e sprites de projéteis usando o asset loader
+            for (const charId in characters) {
+                const charData = characters[charId];
+                if (charData.spriteSheetUrl) assetLoader.addImage(`${charId}_sheet`, charData.spriteSheetUrl); // Carrega a sprite sheet principal
+                if (charData.projectileSpriteUrl) assetLoader.addImage(`${charId}_projectile`, charData.projectileSpriteUrl); // Carrega a sprite do projétil
+            }
+            // Uma vez que todos os assets são carregados, exibe a mensagem de boas-vindas
+            assetLoader.loadAll(() => {
+                showMessageBox('Bem-vindo ao Meu Primeiro Survivor!', 'Use W, A, S, D para se mover e sobreviva às hordas. Colete orbes de experiência para subir de nível e melhorar o seu herói! Cuidado para não ser tocado pelos inimigos!', 'Continuar', showCharacterSelection);
+            });
+        };
+
+        // Variáveis de entrada por toque
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchMoving = false;
+
+        // Listeners de eventos de toque para movimento em dispositivos móveis
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchMoving = true;
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (touchMoving && gameRunning && !isLevelingUp && !isChoosingWeapon && !isChoosingInitialWeapon) {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                const deltaX = currentX - touchStartX;
+                const deltaY = currentY - touchStartY;
+                // Move o jogador com base no delta do toque (ajustado com um multiplicador para sensibilidade)
+                const moveAmount = 0.15; // Ajuste para a sensibilidade do toque
+                player.x += deltaX * moveAmount;
+                player.y += deltaY * moveAmount;
+                // Mantém o jogador dentro dos limites do MAPA
+                player.x = Math.max(player.radius, Math.min(mapWidth - player.radius, player.x));
+                player.y = Math.max(player.radius, Math.min(mapHeight - player.radius, player.y));
+                touchStartX = currentX; // Atualiza o ponto inicial para o próximo movimento
+                touchStartY = currentY;
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => { touchMoving = false; });
+    </script>
+</body>
+</html>
