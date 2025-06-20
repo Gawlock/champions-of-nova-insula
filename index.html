@@ -327,6 +327,7 @@
                 projectileSpeed: 4 * 0.6, // UPDATED: Reduzido em 40% (x 0.6)
                 projectileColor: 'purple',
                 baseAttackInterval: 800 * 1.4, // UPDATED: Aumentado em 40% (x 1.4)
+                projectileLifespan: 60, // 1 segundo (60 frames)
                 // Você DEVE substituir este link pelo link DIRETO da sua sprite sheet real (ex: raw.githubusercontent.com/...).
                 spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
                 // Largura e altura de CADA QUADRO individual na sprite sheet
@@ -367,7 +368,18 @@
                 projectileSpeed: 10 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: 'orange',
                 baseAttackInterval: 400 * 1.4, // UPDATED: Aumentado em 40%
-                projectileMaxTravelDistance: 120
+                projectileMaxTravelDistance: 120,
+                // --- Mantendo as propriedades da sprite sheet para o personagem Raimé ---
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/raimesheetfinal.png', // Temporariamente usando a sprite do Andywn
+                spriteWidth: 40,
+                spriteHeight: 40,
+                spriteFrames: {
+                    up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 },
+                    down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },
+                    left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 },
+                    right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
+                },
+                // --- Fim das propriedades da sprite sheet ---
             },
             thorne: {
                 id: 'thorne', name: 'Thorne', icon: '🎯', description: 'Tiros rápidos de baixo dano nas 4 diagonais.',
@@ -827,8 +839,7 @@
             document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
             isChoosingWeapon = false; // Reseta a flag
             isLevelingUp = false; // Reseta a flag de level up
-            gameLoop(); // Retoma o loop do jogo
-        }
+                }
 
         // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
         function showInitialWeaponSelection() {
@@ -1018,7 +1029,7 @@
 
             updateGameInfoUI(); // Atualiza a UI com as estatísticas iniciais
             gameRunning = true; // Define o jogo como rodando
-            gameLoop(); // Inicia o loop do jogo
+            // gameLoop(); // Removed duplicate call to gameLoop() - IMPORTANT
         }
 
         // Função para desenhar o jogador no canvas
@@ -1252,7 +1263,7 @@
                     // Lógica de projétil específica do personagem, ajustada para scaledRadius
                     switch (selectedCharacter.id) {
                         case 'andywn':
-                            const projectileSprite = assetLoader.getImage('andywn_projectile');
+                            const projectileSpriteAndywn = assetLoader.getImage(`${selectedCharacter.id}_projectile`);
                             dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
                             projectiles.push({
                                 x: player.x, y: player.y, // Posição do projétil no mapa
@@ -1260,11 +1271,12 @@
                                 speed: selectedCharacter.projectileSpeed,
                                 damage: baseDamage,
                                 dx: dx, dy: dy,
-                                type: 'sprite_projectile', sprite: projectileSprite,
+                                type: 'sprite_projectile', sprite: projectileSpriteAndywn,
                                 // Escala as dimensões da sprite com base no escalonamento do raio
                                 width: selectedCharacter.projectileSpriteWidth * (scaledRadius / baseRadius),
                                 height: selectedCharacter.projectileSpriteHeight * (scaledRadius / baseRadius),
-                                creationTime: projectileSpawnTime // Define o tempo de criação para aparência escalonada
+                                creationTime: projectileSpawnTime, // Define o tempo de criação para aparência escalonada
+                                lifespan: selectedCharacter.projectileLifespan // Andywn's projectiles now have a lifespan
                             });
                             break;
                         case 'kazu':
@@ -1281,7 +1293,7 @@
                                 creationTime: projectileSpawnTime
                             });
                             break;
-                        case 'raime':
+                        case 'raime': // Lógica de projétil para Raimé (soco próximo)
                             const numPunches = 5;
                             const arcAngle = Math.PI * 0.8;
                             for (let j = 0; j < numPunches; j++) {
@@ -1605,6 +1617,16 @@
         // Lógica principal de desenho do jogo
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+
+            // Desenha a imagem de fundo do mapa
+            const backgroundMapImage = assetLoader.getImage('background_map');
+            if (backgroundMapImage) {
+                ctx.imageSmoothingEnabled = false; // Garante que a arte em pixel fique nítida
+                ctx.drawImage(backgroundMapImage,
+                              0, 0, backgroundMapImage.width, backgroundMapImage.height, // Retângulo de origem (a imagem inteira)
+                              -cameraX, -cameraY, mapWidth, mapHeight); // Retângulo de destino (preenche o mapa e se move com a câmera)
+            }
+
             drawExperienceOrbs(); // Desenha orbes
             drawPlayer(); // Desenha jogador (agora com lógica de sprite sheet e câmera)
             drawProjectiles(); // Desenha projéteis (agora com lógica de câmera)
@@ -1633,10 +1655,15 @@
                 if (charData.spriteSheetUrl) assetLoader.addImage(`${charId}_sheet`, charData.spriteSheetUrl); // Carrega a sprite sheet principal
                 if (charData.projectileSpriteUrl) assetLoader.addImage(`${charId}_projectile`, charData.projectileSpriteUrl); // Carrega a sprite do projétil
             }
+            // Adiciona a imagem de fundo do mapa
+            assetLoader.addImage('background_map', 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/pxArt.png');
+
             // Uma vez que todos os assets são carregados, exibe a mensagem de boas-vindas
             assetLoader.loadAll(() => {
                 showMessageBox('Campeões de Nova Insula', 'Use W, A, S, D para se mover e sobreviva às hordas. Colete orbes de experiência para subir de nível e melhorar o seu herói! Cuidado para não ser tocado pelos inimigos!', 'Continuar', showCharacterSelection);
             });
+             // Start the animation loop when all assets are loaded and the initial message is handled.
+            gameLoop();
         };
 
         // Variáveis de entrada por toque
