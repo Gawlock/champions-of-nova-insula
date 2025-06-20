@@ -327,15 +327,30 @@
                 projectileSpeed: 4 * 0.6, // UPDATED: Reduzido em 40% (x 0.6)
                 projectileColor: 'purple',
                 baseAttackInterval: 800 * 1.4, // UPDATED: Aumentado em 40% (x 1.4)
-                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', // Placeholder para a sprite sheet
-                spriteWidth: 532,
-                spriteHeight: 127,
-                spriteFrames: {
-                    down: { sx: 266, sy: 177, sWidth: 32, sHeight: 32 },
-                    up: { sx: 133, sy: 127, sWidth: 32, sHeight: 32 },
-                    left: { sx: 399, sy: 177, sWidth: 32, sHeight: 32 },
-                    right: { sx: 532, sy: 127, sWidth: 32, sHeight: 32 }
-                },
+                // Você DEVE substituir este link pelo link DIRETO da sua sprite sheet real (ex: raw.githubusercontent.com/...).
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
+    
+                // Largura e altura de CADA QUADRO individual na sprite sheet
+                // (Total da sheet: 532 de largura / 4 posições = 133 de largura por quadro)
+                spriteWidth: 133, 
+                spriteHeight: 127, 
+
+                          // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
+                  // Lembre-se: 'sx' é o X de início do recorte, 'sy' é o Y de início do recorte.
+                    // 'sWidth' e 'sHeight' são o tamanho do recorte.
+    spriteFrames: {
+        // Posição para baixo / parado (assumindo que está na segunda célula, como no exemplo anterior)
+        down: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 }, 
+        
+        // Posição para cima (assumindo que está na primeira célula)
+        up: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },   
+        
+        // Posição para a esquerda (assumindo que está na terceira célula)
+        left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 }, 
+        
+        // Posição para a direita (assumindo que está na quarta célula)
+        right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 } 
+    },
                 projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', // Placeholder para o projétil
                 projectileSpriteWidth: 20,
                 projectileSpriteHeight: 20,
