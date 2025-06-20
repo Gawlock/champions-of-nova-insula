@@ -365,36 +365,24 @@
                 baseAttackInterval: 500 * 1.4 // UPDATED: Aumentado em 40%
             },
             raime: {
-                id: 'raime', 
-    name: 'Raimé', 
-    icon: '👊', 
-    description: 'Socos fortes em arco de 180º, curto alcance. Agora com sprite sheet!',
+                id: 'raime', name: 'Raimé', icon: '👊', description: 'Socos fortes em arco de 180º, curto alcance.',
+                playerSpeed: 5 * 0.5, // UPDATED: Reduzido pela metade
+                playerColor: '#CD853F',
+                baseProjectileRadius: 12,
+                projectileSpeed: 10 * 0.6, // UPDATED: Reduzido em 40%
+                projectileColor: 'orange',
+                baseAttackInterval: 400 * 1.4, // UPDATED: Aumentado em 40%
+                projectileMaxTravelDistance: 120
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
     
-    // Estatísticas originais do Raimé:
-    playerSpeed: 5, 
-    playerColor: '#CD853F', // Cor padrão do Raimé
-    baseProjectileRadius: 12, 
-    projectileSpeed: 10 * 0.6, // Reduzido em 40% (x 0.6)
-    projectileColor: 'orange', 
-    baseAttackInterval: 400 * 1.4, // Aumentado em 40% (x 1.4)
-    projectileMaxTravelDistance: 120, // Distância máxima do projétil do soco
+                // Largura e altura de CADA QUADRO individual na sprite sheet
+                // (Total da sheet: 532 de largura / 4 posições = 133 de largura por quadro)
+                spriteWidth: 40, 
+                spriteHeight: 40, 
 
-    // --- NOVO: Configurações da Sprite Sheet para Raimé ---
-    // URL da sprite sheet combinada para Raimé.
-    // Você DEVE substituir este link pelo link DIRETO da sua sprite sheet real (ex: raw.githubusercontent.com/...).
-    spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
-    
-    // Largura e altura que CADA QUADRO INDIVIDUAL será DESENHADO no CANVAS.
-    // Se você quer que a sprite final na tela tenha 24x24 pixels:
-    spriteWidth: 24, 
-    spriteHeight: 24,
-
-    // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
-    // ASSUNÇÕES para uma sheet de 96x24 com 4 posições 24x24 (24*4 = 96):
-    // Cada sprite tem 24px de largura e 24px de altura.
-    // 'sx' é a coordenada X de início do recorte na sprite sheet.
-    // 'sy' é a coordenada Y de início do recorte na sprite sheet.
-    // 'sWidth' e 'sHeight' são o tamanho do recorte NA SPRITE SHEET.
+                          // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
+                  // Lembre-se: 'sx' é o X de início do recorte, 'sy' é o Y de início do recorte.
+                    // 'sWidth' e 'sHeight' são o tamanho do recorte.
     spriteFrames: {
         // Posição para cima
         up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 }, 
@@ -408,11 +396,10 @@
         // Posição para a direita (assumindo que está na quarta célula)
         right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 } 
     },
-    // Projétil do Raimé (se ele tiver uma sprite separada, mantenha o URL dela)
-    projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', 
-    projectileSpriteWidth: 20,
-    projectileSpriteHeight: 20,
-};
+                projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', // Placeholder para o projétil
+                projectileSpriteWidth: 30,
+                projectileSpriteHeight: 30,
+            },
                 thorne: {
                 id: 'thorne', name: 'Thorne', icon: '🎯', description: 'Tiros rápidos de baixo dano nas 4 diagonais.',
                 playerSpeed: 5.2 * 0.5, // UPDATED: Reduzido pela metade
