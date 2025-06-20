@@ -373,34 +373,8 @@
                 projectileColor: 'orange',
                 baseAttackInterval: 400 * 1.4, // UPDATED: Aumentado em 40%
                 projectileMaxTravelDistance: 120
-                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
-    
-                // Largura e altura de CADA QUADRO individual na sprite sheet
-                // (Total da sheet: 532 de largura / 4 posições = 133 de largura por quadro)
-                spriteWidth: 40, 
-                spriteHeight: 40, 
-
-                          // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
-                  // Lembre-se: 'sx' é o X de início do recorte, 'sy' é o Y de início do recorte.
-                    // 'sWidth' e 'sHeight' são o tamanho do recorte.
-    spriteFrames: {
-        // Posição para cima
-        up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 }, 
-        
-        // Posição para baixo (assumindo que está na primeira célula)
-        down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },   
-        
-        // Posição para a esquerda (assumindo que está na terceira célula)
-        left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 }, 
-        
-        // Posição para a direita (assumindo que está na quarta célula)
-        right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 } 
-    },
-                projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', // Placeholder para o projétil
-                projectileSpriteWidth: 30,
-                projectileSpriteHeight: 30,
             },
-                thorne: {
+            thorne: {
                 id: 'thorne', name: 'Thorne', icon: '🎯', description: 'Tiros rápidos de baixo dano nas 4 diagonais.',
                 playerSpeed: 5.2 * 0.5, // UPDATED: Reduzido pela metade
                 playerColor: '#5F9EA0',
