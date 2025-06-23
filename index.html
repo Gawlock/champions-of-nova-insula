@@ -251,7 +251,7 @@
             maxHeroicCharge: 100, // Exemplo: 100 pontos para carga total
             lastHeroicChargeTime: 0,
             heroicChargeInterval: 1000, // Ganha carga a cada 1 segundo
-            heroicChargePerKill: 3, // GANHA 3 DE CARGA POR INIMIGO ABATIDO (ATUALIZADO)
+            heroicChargePerKill: 3, // GANHA 3 DE CARGA POR INIMIGO ABATIDO
             isHeroicAbilityActive: false,
             heroicAbilityEndTime: 0,
             originalBasicAttackInterval: 0, // Para Raimé e Ito
@@ -380,8 +380,10 @@
                             orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
                             explosions.push({ x: enemy.x, y: enemy.y, radius: enemy.radius * 2, color: 'magenta', duration: 10, type: 'flash' });
                             // Adiciona carga heroica ao matar
-                            playerRef.heroicCharge += playerRef.heroicChargePerKill;
-                            playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
+                            if (playerRef.heroicCharge < playerRef.maxHeroicCharge) { // Adiciona condição para não ultrapassar o máximo
+                                playerRef.heroicCharge += playerRef.heroicChargePerKill;
+                                playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
+                            }
                         }
                     });
                 }
@@ -624,8 +626,10 @@
                             score += Math.round(10 * playerRef.damageMultiplier);
                             orbsToSpawn.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 8, color: 'lightgreen', value: 10 });
                             // Adiciona carga heroica ao matar
-                            playerRef.heroicCharge += playerRef.heroicChargePerKill;
-                            playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
+                            if (playerRef.heroicCharge < playerRef.maxHeroicCharge) { // Adiciona condição para não ultrapassar o máximo
+                                playerRef.heroicCharge += playerRef.heroicChargePerKill;
+                                playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
+                            }
                         }
                         explosions.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 50, color: 'yellow', duration: 5, type: 'flash' });
                     }
@@ -729,7 +733,7 @@
                 }
             },
             laser: {
-                id: 'laser', name: 'Laser', icon: '💥', description: 'Dispara uma linha contínua que atravessa o ecrã. Ativa-se a cada 4 segundos.',
+                id: 'laser', name: 'Laser', icon: '�', description: 'Dispara uma linha contínua que atravessa o ecrã. Ativa-se a cada 4 segundos.',
                 cooldown: 4000, type: 'projectile',
                 projectileProps: { width: 8, height: Math.max(canvas.width, canvas.height) * 1.5, color: 'lime', baseDamage: 40, lifespan: 60, type: 'laser', },
                 trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
@@ -979,7 +983,8 @@
             document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
             isChoosingWeapon = false; // Reseta a flag
             isLevelingUp = false; // Reseta a flag de level up
-                }
+            // gameLoop(); // Retoma o loop do jogo
+        }
 
         // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
         function showInitialWeaponSelection() {
@@ -1329,7 +1334,7 @@
             const barHeight = 6;
             const yOffset = player.useSprite ? player.spriteHeight / 2 : player.radius;
             const barX = drawX - barWidth / 2;
-            const barY = drawY - yOffset - 15;
+            const barY = drawY - yOffset - 15; // 15 pixels acima da borda superior do jogador
             ctx.fillStyle = '#555';
             ctx.fillRect(barX, barY, barWidth, barHeight);
             const healthPercentage = currentHealth / maxHealth;
@@ -1341,15 +1346,32 @@
             ctx.strokeRect(barX, barY, barWidth, barHeight);
         }
 
-        // --- NOVO: Função para desenhar a barra de habilidade heroica ---
+        // Função para desenhar a barra de habilidade heroica
         function drawHeroicBar() {
-            const barWidth = 100;
-            const barHeight = 10;
-            const barX = (canvas.width / 2) - (barWidth / 2);
-            const barY = canvas.height - 30; // Posição fixa no fundo da tela
+            // Ajusta a posição de desenho do jogador pela câmera
+            const drawX = player.x - cameraX;
+            const drawY = player.y - cameraY;
+
+            const barWidth = 40; // Mantém a largura consistente com a barra de vida
+            const barHeight = 6; // Mantém a altura consistente com a barra de vida
+
+            // Calcula o offset visual do topo do jogador (seja raio ou sprite height)
+            const player_visual_top_offset = player.useSprite ? player.spriteHeight / 2 : player.radius;
+
+            // Posição Y da barra de vida (topo)
+            const health_bar_y_top = drawY - player_visual_top_offset - 15;
+            // Posição Y da barra de vida (base)
+            const health_bar_y_bottom = health_bar_y_top + 6; // Health bar height is 6
+
+            // Posição Y da barra heroica: um pequeno espaço abaixo da barra de vida
+            const small_gap_between_bars = 2;
+            const heroicBarY = health_bar_y_bottom + small_gap_between_bars;
+
+            // Posição X da barra heroica (centralizada com o jogador)
+            const heroicBarX = drawX - barWidth / 2;
 
             ctx.fillStyle = '#555'; // Fundo da barra
-            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.fillRect(heroicBarX, heroicBarY, barWidth, barHeight);
 
             const chargePercentage = player.heroicCharge / player.maxHeroicCharge;
             let barColor = '#00BFFF'; // Cor azul para a barra
@@ -1357,13 +1379,12 @@
                 barColor = '#FFD700'; // Dourado quando carregada
             }
             ctx.fillStyle = barColor;
-            ctx.fillRect(barX, barY, barWidth * chargePercentage, barHeight);
+            ctx.fillRect(heroicBarX, heroicBarY, barWidth * chargePercentage, barHeight);
 
             ctx.strokeStyle = '#eee'; // Borda da barra
             ctx.lineWidth = 1;
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
+            ctx.strokeRect(heroicBarX, heroicBarY, barWidth, barHeight);
         }
-        // --- FIM NOVO ---
 
         // Função para desenhar orbes de experiência
         function drawExperienceOrbs() {
@@ -1498,8 +1519,7 @@
                             });
                             break;
                         case 'kazu': // Ataque "sanfonado" para Kazu
-                            dx = Math.cos(baseAngle); // Direção inicial para Kazu (usada para calcular o eixo da onda)
-                            dy = Math.sin(baseAngle);
+                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
                             projectiles.push({
                                 x: player.x, y: player.y,
                                 radius: scaledRadius,
@@ -1713,9 +1733,11 @@
                                 enemiesToRemove.add(enemy);
                                 score += Math.round(10 * player.damageMultiplier);
                                 orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
-                                // Adiciona carga heroica ao matar
-                                player.heroicCharge += player.heroicChargePerKill;
-                                player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
+                                // Adiciona carga heroica ao matar (para auras também)
+                                if (player.heroicCharge < player.maxHeroicCharge) { // Adiciona condição para não ultrapassar o máximo
+                                    player.heroicCharge += player.heroicChargePerKill;
+                                    player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
+                                }
                             }
                         }
                     });
@@ -1804,9 +1826,11 @@
                                 enemiesToRemove.add(enemy);
                                 score += Math.round(10 * player.damageMultiplier);
                                 orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
-                                // Adiciona carga heroica ao matar
-                                player.heroicCharge += player.heroicChargePerKill;
-                                player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
+                                // Adiciona carga heroica ao matar (para explosões também)
+                                if (player.heroicCharge < player.maxHeroicCharge) { // Adiciona condição para não ultrapassar o máximo
+                                    player.heroicCharge += player.heroicChargePerKill;
+                                    player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
+                                }
                             }
                         }
                     });
@@ -1816,7 +1840,7 @@
                 return effect.duration > 0;
             });
 
-            // --- NOVO: Carregamento da habilidade heroica por tempo ---
+            // --- Carregamento da habilidade heroica por tempo ---
             if (currentTime - player.lastHeroicChargeTime >= player.heroicChargeInterval) {
                 if (player.heroicCharge < player.maxHeroicCharge) {
                     player.heroicCharge += 1; // Aumenta 1 a cada intervalo
@@ -1824,7 +1848,6 @@
                 }
                 player.lastHeroicChargeTime = currentTime;
             }
-            // --- FIM NOVO ---
 
 
             // Atualiza posições dos inimigos e lida com colisões
@@ -1851,12 +1874,11 @@
                             enemiesToRemove.add(enemy);
                             score += Math.round(10 * player.damageMultiplier);
                             orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
-                            // --- NOVO: Carrega habilidade ao matar ---
-                            if (player.heroicCharge < player.maxHeroicCharge) {
+                            // Adiciona carga heroica ao matar
+                            if (player.heroicCharge < player.maxHeroicCharge) { // Adiciona condição para não ultrapassar o máximo
                                 player.heroicCharge += player.heroicChargePerKill;
                                 player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
                             }
-                            // --- FIM NOVO ---
                             if (p.type === 'leech') player.health = Math.min(player.health + p.damage, player.maxHealth);
                         }
                     }
@@ -1929,8 +1951,8 @@
             drawProjectiles(); // Desenha projéteis (agora com lógica de câmera)
             drawEnemies(); // Desenha inimigos (agora com lógica de câmera)
             drawHealthBar(player.x, player.y, player.health, player.maxHealth); // Desenha barra de vida (agora com lógica de câmera)
+            drawHeroicBar(); // Desenha a barra de habilidade heroica (NOVA POSIÇÃO)
             drawEffects(); // Desenha explosões e auras (agora com lógica de câmera)
-            drawHeroicBar(); // Desenha a barra de habilidade heroica
         }
 
         // Função de loop do jogo (recursiva via requestAnimationFrame)
@@ -1960,8 +1982,7 @@
             assetLoader.loadAll(() => {
                 showMessageBox('Campeões de Nova Insula', 'Use W, A, S, D para se mover e sobreviva às hordas. Colete orbes de experiência para subir de nível e melhorar o seu herói! Cuidado para não ser tocado pelos inimigos! Pressione **X** para usar sua habilidade heroica quando a barra azul estiver cheia!', 'Continuar', showCharacterSelection);
             });
-             // Start the animation loop when all assets are loaded and the initial message is handled.
-            gameLoop();
+             gameLoop(); // Start the animation loop when all assets are loaded and the initial message is handled.
         };
 
         // Variáveis de entrada por toque
@@ -1998,3 +2019,4 @@
     </script>
 </body>
 </html>
+�
