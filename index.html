@@ -245,6 +245,23 @@
             useSprite: false, // Flag para indicar se a sprite deve ser usada
             isMoving: false, // Flag para indicar se o jogador está se movendo atualmente
             direction: 'down', // Direção atual para animação da sprite
+
+            // --- NOVO: Propriedades da Habilidade Heroica ---
+            heroicCharge: 0,
+            maxHeroicCharge: 100, // Exemplo: 100 pontos para carga total
+            lastHeroicChargeTime: 0,
+            heroicChargeInterval: 1000, // Ganha carga a cada 1 segundo
+            heroicChargePerKill: 5, // Ganha 5 de carga por inimigo abatido
+            isHeroicAbilityActive: false,
+            heroicAbilityEndTime: 0,
+            originalBasicAttackInterval: 0, // Para Rai.é e Ito
+            originalProjectileCountMultiplier: 0, // Para Kazu
+            originalProjectileSpeed: 0, // Para Thorne
+            originalProjectileLifespan: 0, // Para Thorne
+            originalProjectileRadius: 0, // Para General
+            originalEnemySpeed: 0, // Para Gaeru
+            originalBasicProjectileDamage: 0, // Para General
+            // --- FIM NOVO ---
         };
 
         // Arrays de entidades do jogo
@@ -329,27 +346,42 @@
                 baseAttackInterval: 800 * 1.4, // UPDATED: Aumentado em 40% (x 1.4)
                 projectileLifespan: 60, // 1 segundo (60 frames)
                 // Você DEVE substituir este link pelo link DIRETO da sua sprite sheet real (ex: raw.githubusercontent.com/...).
-                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png', 
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/andsheetfinal.png',
                 // Largura e altura de CADA QUADRO individual na sprite sheet
                 // (Total da sheet: 532 de largura / 4 posições = 133 de largura por quadro)
-                spriteWidth: 40, 
-                spriteHeight: 40, 
+                spriteWidth: 40,
+                spriteHeight: 40,
                 // Definição das coordenadas de recorte para CADA POSIÇÃO dentro da sprite sheet.
                 // Lembre-se: 'sx' é o X de início do recorte, 'sy' é o Y de início do recorte.
                 // 'sWidth' e 'sHeight' são o tamanho do recorte.
                 spriteFrames: {
                     // Posição para cima
-                    up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 }, 
+                    up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 },
                     // Posição para baixo (assumindo que está na primeira célula)
-                    down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },   
+                    down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },
                     // Posição para a esquerda (assumindo que está na terceira célula)
-                    left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 }, 
+                    left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 },
                     // Posição para a direita (assumindo que está na quarta célula)
-                    right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 } 
+                    right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
                 },
                 projectileSpriteUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/projectileAndy.png', // Placeholder para o projétil
                 projectileSpriteWidth: 30,
                 projectileSpriteHeight: 30,
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Destrói instantaneamente todos os inimigos na parte visível da tela
+                    enemiesRef.forEach(enemy => {
+                        // Verifica se o inimigo está dentro da tela visível (considerando a câmera)
+                        const enemyDrawX = enemy.x - cameraX;
+                        const enemyDrawY = enemy.y - cameraY;
+                        if (enemyDrawX > -enemy.radius && enemyDrawX < canvas.width + enemy.radius &&
+                            enemyDrawY > -enemy.radius && enemyDrawY < canvas.height + enemy.radius) {
+                            enemiesToRemove.add(enemy);
+                            score += Math.round(10 * playerRef.damageMultiplier);
+                            orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            explosions.push({ x: enemy.x, y: enemy.y, radius: enemy.radius * 2, color: 'magenta', duration: 10, type: 'flash' });
+                        }
+                    });
+                }
             },
             kazu: {
                 id: 'kazu', name: 'Kazu', icon: '⚔️', description: 'Espadas médias, rápido e teleguiadas.',
@@ -358,16 +390,20 @@
                 projectileSpeed: 6 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: 'silver',
                 baseAttackInterval: 500 * 1.4, // UPDATED: Aumentado em 40%
-                // --- Kazu: Nova sprite sheet URL ---
-                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/kazusheetfinal2.png', // NOVO LINK PARA KAZU
-                spriteWidth: 40, 
-                spriteHeight: 40, 
-                spriteFrames: { 
+                baseProjectileDamage: 10, // Kazu: Projétil mais forte (2x dano base de 5)
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/kazusheetfinal2.png',
+                spriteWidth: 40,
+                spriteHeight: 40,
+                spriteFrames: {
                     up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 },
                     down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },
                     left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 },
                     right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
                 },
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Habilidade heroica de Kazu desabilitada.
+                    // Não duplica mais os projéteis.
+                }
             },
             raime: {
                 id: 'raime', name: 'Raimé', icon: '👊', description: 'Socos fortes em arco de 180º, curto alcance.',
@@ -387,6 +423,16 @@
                     left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 },
                     right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
                 },
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Reduz o intervalo entre ataques básicos para 0,1 segundos por 30 segundos
+                    playerRef.originalBasicAttackInterval = characters.raime.baseAttackInterval; // Guarda o original
+                    characters.raime.baseAttackInterval = 100; // 0.1 segundos
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 30000; // 30 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    characters.raime.baseAttackInterval = playerRef.originalBasicAttackInterval; // Restaura
+                }
             },
             thorne: {
                 id: 'thorne', name: 'Thorne', icon: '🎯', description: 'Tiros rápidos de baixo dano nas 4 diagonais.',
@@ -395,15 +441,30 @@
                 projectileSpeed: 9 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: 'lightblue',
                 baseAttackInterval: 600 * 1.4, // UPDATED: Aumentado em 40%
-                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/thornesheetfinal.png', 
-                spriteWidth: 40, 
-                spriteHeight: 40, 
-                spriteFrames: { 
+                spriteSheetUrl: 'https://raw.githubusercontent.com/Gawlock/champions-of-nova-insula/refs/heads/main/assets/playersprite/thornesheetfinal.png',
+                spriteWidth: 40,
+                spriteHeight: 40,
+                spriteFrames: {
                     up: { sx: 133, sy: 0, sWidth: 133, sHeight: 127 },
                     down: { sx: 0, sy: 0, sWidth: 133, sHeight: 127 },
                     left: { sx: 266, sy: 0, sWidth: 133, sHeight: 127 },
                     right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
                 },
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Atira em todas as direções e em alta velocidades por 30 segundos, projéteis atravessam inimigos
+                    playerRef.originalProjectileSpeed = characters.thorne.projectileSpeed;
+                    playerRef.originalProjectileRadius = characters.thorne.baseProjectileRadius; // Pode ser útil para visual
+
+                    // Ajusta o ataque básico para atirar em 8 direções (4 diagonais + 4 cardinais)
+                    // Esta é uma modificação no comportamento do *spawnProjectile* para Thorne durante a habilidade heroica
+                    // Para simplificar, vou adicionar um efeito que modifica temporariamente as propriedades
+                    // de como os projéteis são criados para Thorne
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 30000; // 30 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    characters.thorne.projectileSpeed = playerRef.originalProjectileSpeed; // Restaura
+                }
             },
             gaeru: {
                 id: 'gaeru', name: 'Gaeru', icon: '⚡', description: 'Especialista em alvo único, tiro mais rápido, dano muito baixo. Mais rápido na movimentação.',
@@ -412,7 +473,19 @@
                 baseProjectileRadius: 3,
                 projectileSpeed: 12 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: 'lime',
-                baseAttackInterval: 300 * 1.4 // UPDATED: Aumentado em 40%
+                baseAttackInterval: 300 * 1.4, // UPDATED: Aumentado em 40%
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Paralisa todos inimigos por 40 segundos e duplica a velocidade de ataque do seu ataque básico
+                    enemySpeed = 0; // Paralisa inimigos
+                    playerRef.originalBasicAttackInterval = characters.gaeru.baseAttackInterval;
+                    characters.gaeru.baseAttackInterval /= 2; // Duplica velocidade de ataque
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 40000; // 40 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    enemySpeed = playerRef.originalEnemySpeed; // Restaura velocidade dos inimigos
+                    characters.gaeru.baseAttackInterval = playerRef.originalBasicAttackInterval; // Restaura velocidade de ataque
+                }
             },
             general: {
                 id: 'general', name: 'General', icon: '🔫', description: 'Atira três tiros em leque na direção do inimigo. Dano médio.',
@@ -421,7 +494,25 @@
                 baseProjectileRadius: 6,
                 projectileSpeed: 7 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: 'darkgray',
-                baseAttackInterval: 700 * 1.4 // UPDATED: Aumentado em 40%
+                baseAttackInterval: 700 * 1.4, // UPDATED: Aumentado em 40%
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Aumenta o tamanho dos projéteis pra 3x, faz eles atravessarem inimigos e reduz o intervalo dos ataques para metade
+                    playerRef.originalBasicProjectileDamage = playerRef.baseProjectileDamage; // Guardar original para projéteis
+                    playerRef.originalBasicAttackInterval = characters.general.baseAttackInterval;
+                    playerRef.originalProjectileRadius = characters.general.baseProjectileRadius;
+
+                    characters.general.baseProjectileRadius *= 3;
+                    playerRef.baseProjectileDamage *= 1.5; // Aumentar um pouco o dano, já que o raio é maior
+                    characters.general.baseAttackInterval /= 2; // Metade do intervalo
+
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 30000; // 30 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    characters.general.baseProjectileRadius = playerRef.originalProjectileRadius;
+                    playerRef.baseProjectileDamage = playerRef.originalBasicProjectileDamage;
+                    characters.general.baseAttackInterval = playerRef.originalBasicAttackInterval;
+                }
             },
             ito: {
                 id: 'ito', name: 'Ito', icon: '🍳', description: 'Projéteis de tamanhos aleatórios, curto alcance.',
@@ -432,12 +523,24 @@
                 projectileSpeed: 8 * 0.6, // UPDATED: Reduzido em 40%
                 projectileColor: '#8B4513',
                 baseAttackInterval: 450 * 1.4, // UPDATED: Aumentado em 40%
-                projectileLifespan: 30
+                projectileLifespan: 30,
+                heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
+                    // Cura toda a vida instantaneamente e reduz o cooldown do ataque básico para zero por 30 segundos
+                    playerRef.health = playerRef.maxHealth;
+                    playerRef.originalBasicAttackInterval = characters.ito.baseAttackInterval;
+                    characters.ito.baseAttackInterval = 0; // Cooldown zero
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 30000; // 30 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    characters.ito.baseAttackInterval = playerRef.originalBasicAttackInterval; // Restaura
+                }
             },
             teste: {
                 id: 'teste', name: 'Teste', icon: '🧪', description: 'Personagem de teste. Escolha a sua arma inicial!',
                 playerSpeed: 5.0 * 0.5, // UPDATED: Reduzido pela metade
                 playerColor: '#808000',
+                // Personagem Teste não possui habilidade heroica
             }
         };
 
@@ -696,13 +799,20 @@
         resizeCanvas();
 
         // Objeto para rastrear teclas pressionadas para movimento do jogador
-        let keys = { w: false, a: false, s: false, d: false };
+        let keys = { w: false, a: false, s: false, d: false, x: false }; // Adiciona 'x' para a habilidade heroica
 
         // Listener de evento para pressionar teclas
         document.addEventListener('keydown', (e) => {
             if (keys.hasOwnProperty(e.key.toLowerCase())) {
                 keys[e.key.toLowerCase()] = true;
                 e.preventDefault(); // Previne o comportamento padrão do navegador (ex: rolagem)
+            }
+            // Ativa a habilidade heroica com 'X'
+            if (e.key.toLowerCase() === 'x' && !isLevelingUp && !isChoosingWeapon && !isChoosingInitialWeapon && gameRunning) {
+                if (player.heroicCharge >= player.maxHeroicCharge && selectedCharacter.heroicAbility) {
+                    player.heroicCharge = 0; // Zera a barra
+                    selectedCharacter.heroicAbility(player, enemies, projectiles, activeAuras, explosions, mapWidth, mapHeight);
+                }
             }
         });
 
@@ -854,7 +964,8 @@
             document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
             isChoosingWeapon = false; // Reseta a flag
             isLevelingUp = false; // Reseta a flag de level up
-                }
+            gameLoop(); // Retoma o loop do jogo
+        }
 
         // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
         function showInitialWeaponSelection() {
@@ -993,6 +1104,12 @@
             player.direction = 'down';
             player.isMoving = false;
 
+            // Reinicia propriedades da habilidade heroica
+            player.heroicCharge = 0;
+            player.lastHeroicChargeTime = 0;
+            player.isHeroicAbilityActive = false;
+            player.heroicAbilityEndTime = 0;
+
             // Reseta as propriedades de invulnerabilidade
             player.isInvulnerable = false;
             player.invulnerabilityStartTime = 0;
@@ -1002,7 +1119,7 @@
                 player.spriteSheet = assetLoader.getImage(`${selectedCharacter.id}_sheet`); // Obtém a imagem da sprite sheet carregada
                 if (player.spriteSheet) {
                     player.spriteWidth = selectedCharacter.spriteWidth;
-                    player.spriteHeight = selectedCharacter.isMoving ? selectedCharacter.spriteHeight : selectedCharacter.spriteHeight; // Ajusta altura para frames parados se necessário
+                    player.spriteHeight = selectedCharacter.spriteHeight;
                     player.useSprite = true; // Habilita a renderização da sprite
                 }
             }
@@ -1041,6 +1158,17 @@
             // Inicializa o rastreamento de tempo para o aumento de velocidade dos inimigos
             gameStartTime = performance.now();
             lastTimeBasedSpeedIncrease = gameStartTime;
+
+            // Guarda as propriedades originais para as habilidades heroicas que as modificam
+            // Certifica-se de que selectedCharacter e suas propriedades estão definidas antes de acessá-las
+            player.originalBasicAttackInterval = selectedCharacter.baseAttackInterval;
+            player.originalProjectileCountMultiplier = player.projectileCountMultiplier;
+            player.originalProjectileSpeed = selectedCharacter.projectileSpeed;
+            player.originalProjectileLifespan = selectedCharacter.projectileLifespan || 0; // Thorne's projectiles might not have a base lifespan
+            player.originalProjectileRadius = selectedCharacter.baseProjectileRadius;
+            player.originalEnemySpeed = enemySpeed;
+            player.originalBasicProjectileDamage = player.baseProjectileDamage;
+
 
             updateGameInfoUI(); // Atualiza a UI com as estatísticas iniciais
             gameRunning = true; // Define o jogo como rodando
@@ -1115,7 +1243,7 @@
                     return;
                 }
 
-                // Ajusta a posição de desenho do projétil pela câmera
+                // Ajusta aposição de desenho do projétil pela câmera
                 const drawX = p.x - cameraX;
                 const drawY = p.y - cameraY;
 
@@ -1199,6 +1327,30 @@
             ctx.strokeRect(barX, barY, barWidth, barHeight);
         }
 
+        // --- NOVO: Função para desenhar a barra de habilidade heroica ---
+        function drawHeroicBar() {
+            const barWidth = 100;
+            const barHeight = 10;
+            const barX = (canvas.width / 2) - (barWidth / 2);
+            const barY = canvas.height - 30; // Posição fixa no fundo da tela
+
+            ctx.fillStyle = '#555'; // Fundo da barra
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            const chargePercentage = player.heroicCharge / player.maxHeroicCharge;
+            let barColor = '#00BFFF'; // Cor azul para a barra
+            if (chargePercentage >= 1) {
+                barColor = '#FFD700'; // Dourado quando carregada
+            }
+            ctx.fillStyle = barColor;
+            ctx.fillRect(barX, barY, barWidth * chargePercentage, barHeight);
+
+            ctx.strokeStyle = '#eee'; // Borda da barra
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+        // --- FIM NOVO ---
+
         // Função para desenhar orbes de experiência
         function drawExperienceOrbs() {
             experienceOrbs.forEach(orb => {
@@ -1237,8 +1389,7 @@
             });
             activeAuras.forEach(aura => {
                 if (aura.type === 'timed_aura_damage') {
-                    // Auras são desenhadas em relação à posição do jogador, que já é compensada pela câmera.
-                    // Portanto, as coordenadas de desenho da aura também precisam ser ajustadas.
+                    // Auras são desenhadas em relação à posição do inimigo ao jogador (centro da aura)
                     const auraDrawX = player.x - cameraX;
                     const auraDrawY = player.y - cameraY;
 
@@ -1256,6 +1407,10 @@
             });
         }
 
+        // Constantes para os parâmetros do projétil "sanfonado" do Kazu
+        const KAZU_ACCORDION_AMPLITUDE = 30; // Amplitude da onda (pixels de lado a lado)
+        const KAZU_ACCORDION_FREQUENCY = 0.02; // Frequência da onda (quanto maior, mais "dobras" na trajetória)
+
         // Função para lidar com o spawn do projétil primário do jogador (ataque básico)
         function spawnProjectile(currentTime) {
             // Somente dispara ataque básico se o personagem não for 'teste' e o cooldown for atendido
@@ -1266,7 +1421,38 @@
                 // Calcula o raio do projétil escalado com base no nível de ataque básico
                 const scaledRadius = baseRadius * (1 + (player.basicAttackLevel - 1) * 0.05);
 
-                const baseDamage = player.baseProjectileDamage * player.damageMultiplier;
+                const baseDamage = player.baseProjectileDamage * player.damageMultiplier; // MOVIDO PARA O TOPO DA FUNÇÃO
+
+                let projectileLifespan = selectedCharacter.projectileLifespan;
+                let projectileSpeed = selectedCharacter.projectileSpeed;
+                let projectileType = 'normal'; // Padrão
+
+                // Ajustes para General e Thorne quando a habilidade heroica está ativa
+                if (player.isHeroicAbilityActive && selectedCharacter.id === 'thorne') {
+                    projectileSpeed = selectedCharacter.projectileSpeed * 2; // Alta velocidade
+                    projectileLifespan = Infinity; // Atravessa inimigos (não some por tempo)
+                    // Thorne atira em todas as 8 direções quando a habilidade está ativa
+                    const allDirectionsAngles = [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4, Math.PI, 5 * Math.PI / 4, 3 * Math.PI / 2, 7 * Math.PI / 4];
+                    allDirectionsAngles.forEach(angle => {
+                        const dx_h = Math.cos(angle);
+                        const dy_h = Math.sin(angle);
+                        projectiles.push({
+                            x: player.x, y: player.y,
+                            radius: scaledRadius,
+                            speed: projectileSpeed,
+                            color: selectedCharacter.projectileColor,
+                            damage: baseDamage,
+                            dx: dx_h, dy: dy_h,
+                            type: 'penetrating', // Projéteis de Thorne atravessam
+                            lifespan: projectileLifespan,
+                            creationTime: currentTime
+                        });
+                    });
+                    return; // Retorna para não disparar os projéteis normais do Thorne abaixo
+                }
+                if (player.isHeroicAbilityActive && selectedCharacter.id === 'general') {
+                    projectileType = 'penetrating'; // Projéteis do General atravessam
+                }
 
                 // Loop para disparar múltiplos projéteis com base no basicAttackLevel
                 for (let i = 0; i < player.basicAttackLevel; i++) {
@@ -1294,10 +1480,27 @@
                                 width: selectedCharacter.projectileSpriteWidth * (scaledRadius / baseRadius),
                                 height: selectedCharacter.projectileSpriteHeight * (scaledRadius / baseRadius),
                                 creationTime: projectileSpawnTime, // Define o tempo de criação para aparência escalonada
-                                lifespan: selectedCharacter.projectileLifespan // Andywn's projectiles now have a lifespan
+                                lifespan: projectileLifespan // Andywn's projectiles now have a lifespan
                             });
                             break;
-                        case 'kazu': // Kazu continua com ataque 'normal'
+                        case 'kazu': // Ataque "sanfonado" para Kazu
+                            dx = Math.cos(baseAngle); // Direção inicial para Kazu (usada para calcular o eixo da onda)
+                            dy = Math.sin(baseAngle);
+                            projectiles.push({
+                                x: player.x, y: player.y,
+                                radius: scaledRadius,
+                                speed: selectedCharacter.projectileSpeed,
+                                color: selectedCharacter.projectileColor,
+                                damage: baseDamage,
+                                initialX: player.x,
+                                initialY: player.y,
+                                initialAngle: baseAngle,
+                                amplitude: KAZU_ACCORDION_AMPLITUDE,
+                                frequency: KAZU_ACCORDION_FREQUENCY,
+                                type: 'kazu_accordion_projectile', // Novo tipo de projétil
+                                creationTime: projectileSpawnTime,
+                            });
+                            break;
                         case 'gaeru':
                             dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
                             projectiles.push({
@@ -1307,7 +1510,7 @@
                                 color: selectedCharacter.projectileColor,
                                 damage: baseDamage,
                                 dx: dx, dy: dy,
-                                type: 'normal',
+                                type: projectileType, // Pode ser 'normal' ou 'penetrating' para General
                                 creationTime: projectileSpawnTime
                             });
                             break;
@@ -1329,7 +1532,7 @@
                                 });
                             }
                             break;
-                        case 'thorne': // Thorne volta a disparar 4 projéteis nas diagonais
+                        case 'thorne': // Thorne dispara 4 projéteis nas diagonais (normalmente)
                             const diagonalAngles = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
                             diagonalAngles.forEach(angle => {
                                 dx = Math.cos(angle); dy = Math.sin(angle);
@@ -1340,8 +1543,8 @@
                                     color: selectedCharacter.projectileColor,
                                     damage: baseDamage,
                                     dx: dx, dy: dy,
-                                    type: 'normal',
-                                    creationTime: projectileSpawnTime
+                                    type: projectileType,
+                                    creationTime: currentTime
                                 });
                             });
                             break;
@@ -1353,12 +1556,12 @@
                                 dx = Math.cos(spread); dy = Math.sin(spread);
                                 projectiles.push({
                                     x: player.x, y: player.y, // Posição do projétil no mapa
-                                    radius: scaledRadius,
+                                    radius: player.isHeroicAbilityActive ? selectedCharacter.baseProjectileRadius * 3 : scaledRadius, // Aumenta o tamanho se a habilidade estiver ativa
                                     speed: selectedCharacter.projectileSpeed,
                                     color: selectedCharacter.projectileColor,
                                     damage: baseDamage,
                                     dx: dx, dy: dy,
-                                    type: 'normal',
+                                    type: projectileType, // Pode ser 'normal' ou 'penetrating'
                                     creationTime: projectileSpawnTime
                                 });
                             }
@@ -1375,8 +1578,8 @@
                                 color: selectedCharacter.projectileColor,
                                 damage: baseDamage,
                                 dx: dx, dy: dy,
-                                lifespan: selectedCharacter.projectileLifespan,
-                                type: 'normal',
+                                lifespan: projectileLifespan,
+                                type: projectileType,
                                 creationTime: currentTime
                             });
                             break;
@@ -1387,6 +1590,11 @@
 
         // Função para lidar com o spawn de inimigos
         function spawnEnemy(currentTime) {
+            // Se Gaeru estiver com habilidade heroica, não spawna inimigos (paralisa)
+            if (selectedCharacter.id === 'gaeru' && player.isHeroicAbilityActive) {
+                return;
+            }
+
             if (currentTime - lastEnemySpawnTime > enemySpawnInterval) {
                 let x, y;
                 const padding = 50;
@@ -1400,7 +1608,7 @@
                 }
                 const enemyInitialHealth = 10 + (currentLevel * 2) + (Math.floor(Math.random() * 20) + 1);
                 const enemyCurrentSpeed = enemySpeed * ((Math.random() * 1.4 + 0.1));
-                const enemyCurrentRadius = player.radius * ((Math.random() * 2.95) + 0.05);
+                let enemyCurrentRadius = player.radius * ((Math.random() * 2.95) + 0.05);
                 enemies.push({ x: x, y: y, radius: enemyCurrentRadius, speed: enemyCurrentSpeed, color: 'red', health: enemyInitialHealth, maxHealth: enemyInitialHealth });
                 lastEnemySpawnTime = currentTime;
                 if (enemySpawnInterval > 250) enemySpawnInterval -= 5;
@@ -1411,6 +1619,17 @@
         function update(currentTime) {
             // Pausa a atualização se o jogo não estiver rodando ou um menu estiver aberto
             if (!gameRunning || isLevelingUp || isChoosingWeapon || isChoosingInitialWeapon) return;
+
+            // --- Lógica da Habilidade Heroica Ativa ---
+            if (player.isHeroicAbilityActive && currentTime >= player.heroicAbilityEndTime) {
+                player.isHeroicAbilityActive = false;
+                // Chama a função onHeroicAbilityEnd se ela existir para o personagem selecionado
+                if (selectedCharacter.onHeroicAbilityEnd) {
+                    selectedCharacter.onHeroicAbilityEnd(player);
+                }
+                console.log(`Habilidade Heroica de ${selectedCharacter.name} terminou.`);
+            }
+            // --- FIM Lógica Habilidade Heroica Ativa ---
 
             // Aplica o aumento de velocidade dos inimigos baseado no tempo
             if (currentTime - lastTimeBasedSpeedIncrease >= TIME_INTERVAL_FOR_SPEED_INCREASE) {
@@ -1451,10 +1670,6 @@
             cameraX = player.x - canvas.width / 2;
             cameraY = player.y - canvas.height / 2;
 
-            // Garante que a câmera não saia dos limites do mapa
-            cameraX = Math.max(0, Math.min(mapWidth - canvas.width, cameraX));
-            cameraY = Math.max(0, Math.min(mapHeight - canvas.height, cameraY));
-
             // Atualiza armas ativas
             player.activeWeapons.forEach(weapon => {
                 if (weapon.type === 'passive_effect') {
@@ -1494,11 +1709,33 @@
 
             // Atualiza e filtra projéteis
             projectiles = projectiles.filter(p => {
-                if (p.creationTime && currentTime < p.creationTime) {
+                if (p.creationTime && performance.now() < p.creationTime) {
                     return true;
                 }
 
-                if (p.type === 'orbiting') {
+                // --- Lógica de movimento para projétil Kazu Sanfonado ---
+                if (p.type === 'kazu_accordion_projectile') {
+                    const elapsedMs = currentTime - p.creationTime;
+                    // Converter velocidade de pixels/frame para pixels/ms (aprox. 60 FPS)
+                    const speedPerMs = p.speed / (1000 / 60);
+
+                    // Posição linear ao longo da direção inicial
+                    const linearX = p.initialX + Math.cos(p.initialAngle) * (speedPerMs * elapsedMs);
+                    const linearY = p.initialY + Math.sin(p.initialAngle) * (speedPerMs * elapsedMs);
+
+                    // Offset perpendicular para o efeito sanfonado (onda senoidal)
+                    const perpendicularAngle = p.initialAngle + Math.PI / 2;
+                    const offsetX = Math.cos(perpendicularAngle) * p.amplitude * Math.sin(elapsedMs * p.frequency);
+                    const offsetY = Math.sin(perpendicularAngle) * p.amplitude * Math.sin(elapsedMs * p.frequency);
+
+                    p.x = linearX + offsetX;
+                    p.y = linearY + offsetY;
+
+                    // Projéteis sanfonados do Kazu atravessam inimigos e não têm um tempo de vida fixo
+                    // Eles só serão removidos se saírem dos limites do mapa.
+                }
+                // --- FIM Lógica Kazu Sanfonado ---
+                else if (p.type === 'orbiting') {
                     p.currentOrbitAngle += p.orbitSpeed;
                     p.x = player.x + Math.cos(p.currentOrbitAngle) * p.orbitRadius;
                     p.y = player.y + Math.sin(p.currentOrbitAngle) * p.orbitRadius;
@@ -1516,10 +1753,14 @@
                     p.y += (p.dy || 0) * p.speed;
                 }
 
-                if (p.lifespan !== undefined) {
+                // Projéteis perfurantes (penetrating) não expiram por lifespan, apenas se saírem do mapa
+                if (p.type === 'penetrating' || p.type === 'kazu_accordion_projectile') { // Kazu agora também é penetrante
+                    // Não tem lifespan, só é removido se sair da tela
+                } else if (p.lifespan !== undefined) {
                     p.lifespan--;
                     return p.lifespan > 0;
                 }
+
                 if (p.type === 'bomb') {
                     p.fuseTime--;
                     if (p.fuseTime <= 0) {
@@ -1555,6 +1796,17 @@
                 return effect.duration > 0;
             });
 
+            // --- NOVO: Carregamento da habilidade heroica por tempo ---
+            if (currentTime - player.lastHeroicChargeTime >= player.heroicChargeInterval) {
+                if (player.heroicCharge < player.maxHeroicCharge) {
+                    player.heroicCharge += 1; // Aumenta 1 a cada intervalo
+                    player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge); // Limita ao máximo
+                }
+                player.lastHeroicChargeTime = currentTime;
+            }
+            // --- FIM NOVO ---
+
+
             // Atualiza posições dos inimigos e lida com colisões
             enemies.forEach((enemy) => {
                 // Move inimigo em direção ao jogador no MAPA
@@ -1571,13 +1823,20 @@
                     const projectileEffectiveRadius = p.radius !== undefined ? p.radius : p.width / 2;
                     if (Math.sqrt((p.x - enemy.x) ** 2 + (p.y - enemy.y) ** 2) < projectileEffectiveRadius + enemy.radius) {
                         enemy.health -= p.damage;
-                        if (!['laser', 'figure_eight', 'melee', 'orbiting', 'sprite_projectile'].includes(p.type)) {
+                        // Projéteis perfurantes não são removidos ao atingir
+                        if (!['laser', 'figure_eight', 'melee', 'orbiting', 'sprite_projectile', 'penetrating', 'kazu_accordion_projectile'].includes(p.type)) { // Adicionado kazu_accordion_projectile para não remover ao atingir
                             projectilesToRemove.add(p);
                         }
                         if (enemy.health <= 0) {
                             enemiesToRemove.add(enemy);
                             score += Math.round(10 * player.damageMultiplier);
                             orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            // --- NOVO: Carrega habilidade ao matar ---
+                            if (player.heroicCharge < player.maxHeroicCharge) {
+                                player.heroicCharge += player.heroicChargePerKill;
+                                player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
+                            }
+                            // --- FIM NOVO ---
                             if (p.type === 'leech') player.health = Math.min(player.health + p.damage, player.maxHealth);
                         }
                     }
@@ -1641,8 +1900,8 @@
             if (backgroundMapImage) {
                 ctx.imageSmoothingEnabled = false; // Garante que a arte em pixel fique nítida
                 ctx.drawImage(backgroundMapImage,
-                              0, 0, backgroundMapImage.width, backgroundMapImage.height, // Retângulo de origem (a imagem inteira)
-                              -cameraX, -cameraY, mapWidth, mapHeight); // Retângulo de destino (preenche o mapa e se move com a câmera)
+                                0, 0, backgroundMapImage.width, backgroundMapImage.height, // Retângulo de origem (a imagem inteira)
+                                -cameraX, -cameraY, mapWidth, mapHeight); // Retângulo de destino (preenche o mapa e se move com a câmera)
             }
 
             drawExperienceOrbs(); // Desenha orbes
@@ -1651,6 +1910,7 @@
             drawEnemies(); // Desenha inimigos (agora com lógica de câmera)
             drawHealthBar(player.x, player.y, player.health, player.maxHealth); // Desenha barra de vida (agora com lógica de câmera)
             drawEffects(); // Desenha explosões e auras (agora com lógica de câmera)
+            drawHeroicBar(); // Desenha a barra de habilidade heroica
         }
 
         // Função de loop do jogo (recursiva via requestAnimationFrame)
@@ -1678,7 +1938,7 @@
 
             // Uma vez que todos os assets são carregados, exibe a mensagem de boas-vindas
             assetLoader.loadAll(() => {
-                showMessageBox('Campeões de Nova Insula', 'Use W, A, S, D para se mover e sobreviva às hordas. Colete orbes de experiência para subir de nível e melhorar o seu herói! Cuidado para não ser tocado pelos inimigos!', 'Continuar', showCharacterSelection);
+                showMessageBox('Campeões de Nova Insula', 'Use W, A, S, D para se mover e sobreviva às hordas. Colete orbes de experiência para subir de nível e melhorar o seu herói! Cuidado para não ser tocado pelos inimigos! Pressione **X** para usar sua habilidade heroica quando a barra azul estiver cheia!', 'Continuar', showCharacterSelection);
             });
              // Start the animation loop when all assets are loaded and the initial message is handled.
             gameLoop();
