@@ -251,10 +251,10 @@
             maxHeroicCharge: 100, // Exemplo: 100 pontos para carga total
             lastHeroicChargeTime: 0,
             heroicChargeInterval: 1000, // Ganha carga a cada 1 segundo
-            heroicChargePerKill: 5, // Ganha 5 de carga por inimigo abatido
+            heroicChargePerKill: 3, // GANHA 3 DE CARGA POR INIMIGO ABATIDO (ATUALIZADO)
             isHeroicAbilityActive: false,
             heroicAbilityEndTime: 0,
-            originalBasicAttackInterval: 0, // Para Rai.é e Ito
+            originalBasicAttackInterval: 0, // Para Raimé e Ito
             originalProjectileCountMultiplier: 0, // Para Kazu
             originalProjectileSpeed: 0, // Para Thorne
             originalProjectileLifespan: 0, // Para Thorne
@@ -379,6 +379,9 @@
                             score += Math.round(10 * playerRef.damageMultiplier);
                             orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
                             explosions.push({ x: enemy.x, y: enemy.y, radius: enemy.radius * 2, color: 'magenta', duration: 10, type: 'flash' });
+                            // Adiciona carga heroica ao matar
+                            playerRef.heroicCharge += playerRef.heroicChargePerKill;
+                            playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
                         }
                     });
                 }
@@ -401,8 +404,17 @@
                     right: { sx: 399, sy: 0, sWidth: 133, sHeight: 127 }
                 },
                 heroicAbility: (playerRef, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, mapWidth, mapHeight) => {
-                    // Habilidade heroica de Kazu desabilitada.
-                    // Não duplica mais os projéteis.
+                    // Guarda o intervalo de ataque básico original de Kazu
+                    playerRef.originalBasicAttackInterval = characters.kazu.baseAttackInterval;
+                    // Zera o intervalo de ataque básico para permitir ataques contínuos
+                    characters.kazu.baseAttackInterval = 0; // Definido para 0 para ataques instantâneos
+                    playerRef.isHeroicAbilityActive = true;
+                    playerRef.heroicAbilityEndTime = performance.now() + 30000; // Habilidade dura 30 segundos
+                },
+                onHeroicAbilityEnd: (playerRef) => {
+                    // Restaura o intervalo de ataque básico original de Kazu
+                    characters.kazu.baseAttackInterval = playerRef.originalBasicAttackInterval;
+                    console.log("Habilidade Heroica de Kazu terminou. Intervalo de ataque básico restaurado.");
                 }
             },
             raime: {
@@ -611,6 +623,9 @@
                             enemiesToRemove.add(targetEnemy);
                             score += Math.round(10 * playerRef.damageMultiplier);
                             orbsToSpawn.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                            // Adiciona carga heroica ao matar
+                            playerRef.heroicCharge += playerRef.heroicChargePerKill;
+                            playerRef.heroicCharge = Math.min(playerRef.heroicCharge, playerRef.maxHeroicCharge);
                         }
                         explosions.push({ x: targetEnemy.x, y: targetEnemy.y, radius: 50, color: 'yellow', duration: 5, type: 'flash' });
                     }
@@ -964,8 +979,7 @@
             document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
             isChoosingWeapon = false; // Reseta a flag
             isLevelingUp = false; // Reseta a flag de level up
-            gameLoop(); // Retoma o loop do jogo
-        }
+                }
 
         // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
         function showInitialWeaponSelection() {
@@ -1562,7 +1576,7 @@
                                     damage: baseDamage,
                                     dx: dx, dy: dy,
                                     type: projectileType, // Pode ser 'normal' ou 'penetrating'
-                                    creationTime: projectileSpawnTime
+                                    creationTime: currentTime
                                 });
                             }
                             break;
@@ -1699,6 +1713,9 @@
                                 enemiesToRemove.add(enemy);
                                 score += Math.round(10 * player.damageMultiplier);
                                 orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                                // Adiciona carga heroica ao matar
+                                player.heroicCharge += player.heroicChargePerKill;
+                                player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
                             }
                         }
                     });
@@ -1787,6 +1804,9 @@
                                 enemiesToRemove.add(enemy);
                                 score += Math.round(10 * player.damageMultiplier);
                                 orbsToSpawn.push({ x: enemy.x, y: enemy.y, radius: 8, color: 'lightgreen', value: 10 });
+                                // Adiciona carga heroica ao matar
+                                player.heroicCharge += player.heroicChargePerKill;
+                                player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
                             }
                         }
                     });
@@ -1800,7 +1820,7 @@
             if (currentTime - player.lastHeroicChargeTime >= player.heroicChargeInterval) {
                 if (player.heroicCharge < player.maxHeroicCharge) {
                     player.heroicCharge += 1; // Aumenta 1 a cada intervalo
-                    player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge); // Limita ao máximo
+                    player.heroicCharge = Math.min(player.heroicCharge, player.maxHeroicCharge);
                 }
                 player.lastHeroicChargeTime = currentTime;
             }
