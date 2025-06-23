@@ -244,7 +244,8 @@
             spriteHeight: 0, // Altura de um único quadro na sprite sheet
             useSprite: false, // Flag para indicar se a sprite deve ser usada
             isMoving: false, // Flag para indicar se o jogador está se movendo atualmente
-            direction: 'down', // Direção atual para animação da sprite
+            direction: 'down', // Direção atual para animação da sprite (cardeal)
+            movementAngle: Math.PI / 2, // Ângulo de movimento (em radianos, 0 = direita, PI/2 = baixo)
 
             // --- NOVO: Propriedades da Habilidade Heroica ---
             heroicCharge: 0,
@@ -733,7 +734,7 @@
                 }
             },
             laser: {
-                id: 'laser', name: 'Laser', icon: '�', description: 'Dispara uma linha contínua que atravessa o ecrã. Ativa-se a cada 4 segundos.',
+                id: 'laser', name: 'Laser', icon: '💥', description: 'Dispara uma linha contínua que atravessa o ecrã. Ativa-se a cada 4 segundos.',
                 cooldown: 4000, type: 'projectile',
                 projectileProps: { width: 8, height: Math.max(canvas.width, canvas.height) * 1.5, color: 'lime', baseDamage: 40, lifespan: 60, type: 'laser', },
                 trigger: function(playerRef, currentTime, enemiesRef, projectilesRef, activeAurasRef, explosionsRef, experienceOrbsRef) {
@@ -983,7 +984,7 @@
             document.getElementById('weapon-selection').style.display = 'none'; // Esconde a seleção de armas
             isChoosingWeapon = false; // Reseta a flag
             isLevelingUp = false; // Reseta a flag de level up
-            // gameLoop(); // Retoma o loop do jogo
+            // Removido a chamada duplicada para gameLoop(); aqui.
         }
 
         // Função para exibir o menu de seleção de arma inicial (para o personagem 'teste')
@@ -1121,6 +1122,7 @@
             player.useSprite = false;
             player.spriteSheet = null; // Garante que a referência da sprite sheet seja nula até ser carregada
             player.direction = 'down';
+            player.movementAngle = Math.PI / 2; // Define o ângulo inicial para baixo
             player.isMoving = false;
 
             // Reinicia propriedades da habilidade heroica
@@ -1191,7 +1193,7 @@
 
             updateGameInfoUI(); // Atualiza a UI com as estatísticas iniciais
             gameRunning = true; // Define o jogo como rodando
-            // gameLoop(); // Removed duplicate call to gameLoop() - IMPORTANT
+            // Removed duplicate call to gameLoop(); - IMPORTANT
         }
 
         // Função para desenhar o jogador no canvas
@@ -1253,6 +1255,38 @@
                 ctx.stroke();
                 ctx.closePath();
             }
+
+            // Desenha a seta de direção do jogador
+            ctx.save(); // Salva o estado atual do canvas
+            ctx.translate(drawX, drawY); // Move a origem para o centro do jogador
+
+            // Obtém o ângulo de movimento atual do jogador
+            let arrowAngle = player.movementAngle;
+
+            ctx.rotate(arrowAngle); // Rotaciona o contexto para o ângulo de movimento
+
+            const arrowDistanceFromPlayer = player.radius + 5; // Distância do centro do jogador até a base da seta
+            const arrowLength = 15; // Comprimento da linha da seta
+            const arrowHeadSize = 8; // Tamanho da base da ponta da seta
+
+            ctx.beginPath();
+            // Ponto inicial da linha da seta, deslocado para a "frente" do jogador
+            ctx.moveTo(arrowDistanceFromPlayer, 0);
+            // Ponto final da linha da seta
+            ctx.lineTo(arrowDistanceFromPlayer + arrowLength, 0);
+
+            // Pontos da cabeça da seta
+            ctx.lineTo(arrowDistanceFromPlayer + arrowLength - arrowHeadSize, -arrowHeadSize / 2);
+            ctx.moveTo(arrowDistanceFromPlayer + arrowLength, 0); // Volta para a ponta
+            ctx.lineTo(arrowDistanceFromPlayer + arrowLength - arrowHeadSize, arrowHeadSize / 2);
+
+            ctx.strokeStyle = 'yellow';
+            ctx.fillStyle = 'yellow';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fill(); // Preenche a cabeça da seta
+
+            ctx.restore(); // Restaura o estado do canvas para evitar que outras coisas girem
         }
 
         // Função para desenhar projéteis no canvas
@@ -1497,19 +1531,19 @@
                     // Determina o alvo/direção para o projétil
                     const nearestEnemy = getNearestEnemy(player.x, player.y);
                     let baseAngle = nearestEnemy ? Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x) : Math.random() * Math.PI * 2;
-                    let dx, dy;
+                    let dx_proj, dy_proj; // Usar nomes diferentes para evitar conflito com dx, dy de movimento
 
                     // Lógica de projétil específica do personagem, ajustada para scaledRadius
                     switch (selectedCharacter.id) {
                         case 'andywn':
                             const projectileSpriteAndywn = assetLoader.getImage(`${selectedCharacter.id}_projectile`);
-                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            dx_proj = Math.cos(baseAngle); dy_proj = Math.sin(baseAngle);
                             projectiles.push({
                                 x: player.x, y: player.y, // Posição do projétil no mapa
                                 radius: scaledRadius, // Usa raio escalado
                                 speed: selectedCharacter.projectileSpeed,
                                 damage: baseDamage,
-                                dx: dx, dy: dy,
+                                dx: dx_proj, dy: dy_proj,
                                 type: 'sprite_projectile', sprite: projectileSpriteAndywn,
                                 // Escala as dimensões da sprite com base no escalonamento do raio
                                 width: selectedCharacter.projectileSpriteWidth * (scaledRadius / baseRadius),
@@ -1519,7 +1553,8 @@
                             });
                             break;
                         case 'kazu': // Ataque "sanfonado" para Kazu
-                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            dx_proj = Math.cos(baseAngle); // Direção inicial para Kazu (usada para calcular o eixo da onda)
+                            dy_proj = Math.sin(baseAngle);
                             projectiles.push({
                                 x: player.x, y: player.y,
                                 radius: scaledRadius,
@@ -1536,14 +1571,14 @@
                             });
                             break;
                         case 'gaeru':
-                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            dx_proj = Math.cos(baseAngle); dy_proj = Math.sin(baseAngle);
                             projectiles.push({
                                 x: player.x, y: player.y, // Posição do projétil no mapa
                                 radius: scaledRadius,
                                 speed: selectedCharacter.projectileSpeed,
                                 color: selectedCharacter.projectileColor,
                                 damage: baseDamage,
-                                dx: dx, dy: dy,
+                                dx: dx_proj, dy: dy_proj,
                                 type: projectileType, // Pode ser 'normal' ou 'penetrating' para General
                                 creationTime: projectileSpawnTime
                             });
@@ -1553,14 +1588,14 @@
                             const arcAngle = Math.PI * 0.8;
                             for (let j = 0; j < numPunches; j++) {
                                 const spreadAngle = baseAngle - (arcAngle / 2) + (j * arcAngle / (numPunches - 1));
-                                dx = Math.cos(spreadAngle); dy = Math.sin(spreadAngle);
+                                dx_proj = Math.cos(spreadAngle); dy_proj = Math.sin(spreadAngle);
                                 projectiles.push({
                                     x: player.x, y: player.y, // Posição do projétil no mapa
                                     radius: scaledRadius,
                                     speed: selectedCharacter.projectileSpeed,
                                     color: selectedCharacter.projectileColor,
                                     damage: baseDamage,
-                                    dx: dx, dy: dy,
+                                    dx: dx_proj, dy: dy_proj,
                                     type: 'melee', initialX: player.x, initialY: player.y, maxTravelDistance: selectedCharacter.projectileMaxTravelDistance,
                                     creationTime: projectileSpawnTime
                                 });
@@ -1569,14 +1604,14 @@
                         case 'thorne': // Thorne dispara 4 projéteis nas diagonais (normalmente)
                             const diagonalAngles = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
                             diagonalAngles.forEach(angle => {
-                                dx = Math.cos(angle); dy = Math.sin(angle);
+                                dx_proj = Math.cos(angle); dy_proj = Math.sin(angle);
                                 projectiles.push({
                                     x: player.x, y: player.y, // Posição do projétil no mapa
                                     radius: scaledRadius,
                                     speed: selectedCharacter.projectileSpeed,
                                     color: selectedCharacter.projectileColor,
                                     damage: baseDamage,
-                                    dx: dx, dy: dy,
+                                    dx: dx_proj, dy: dy_proj,
                                     type: projectileType,
                                     creationTime: currentTime
                                 });
@@ -1587,21 +1622,21 @@
                             const fanAngle = Math.PI / 8;
                             for (let j = 0; j < numShots; j++) {
                                 const spread = baseAngle - (fanAngle / 2) + (j * fanAngle / (numShots - 1));
-                                dx = Math.cos(spread); dy = Math.sin(spread);
+                                dx_proj = Math.cos(spread); dy_proj = Math.sin(spread);
                                 projectiles.push({
                                     x: player.x, y: player.y, // Posição do projétil no mapa
                                     radius: player.isHeroicAbilityActive ? selectedCharacter.baseProjectileRadius * 3 : scaledRadius, // Aumenta o tamanho se a habilidade estiver ativa
                                     speed: selectedCharacter.projectileSpeed,
                                     color: selectedCharacter.projectileColor,
                                     damage: baseDamage,
-                                    dx: dx, dy: dy,
+                                    dx: dx_proj, dy: dy_proj,
                                     type: projectileType, // Pode ser 'normal' ou 'penetrating'
                                     creationTime: currentTime
                                 });
                             }
                             break;
                         case 'ito':
-                            dx = Math.cos(baseAngle); dy = Math.sin(baseAngle);
+                            dx_proj = Math.cos(baseAngle); dy_proj = Math.sin(baseAngle);
                             // Raio aleatório para projéteis de Ito, também escalado pelo nível de ataque básico
                             const randomBaseRadius = selectedCharacter.projectileMinRadius + (Math.random() * (selectedCharacter.projectileMaxRadius - selectedCharacter.projectileMinRadius));
                             const randomScaledRadius = randomBaseRadius * (1 + (player.basicAttackLevel - 1) * 0.05);
@@ -1611,7 +1646,7 @@
                                 speed: selectedCharacter.projectileSpeed,
                                 color: selectedCharacter.projectileColor,
                                 damage: baseDamage,
-                                dx: dx, dy: dy,
+                                dx: dx_proj, dy: dy_proj,
                                 lifespan: projectileLifespan,
                                 type: projectileType,
                                 creationTime: currentTime
@@ -1685,10 +1720,15 @@
 
             player.isMoving = (dx !== 0 || dy !== 0);
             if (player.isMoving) {
-                if (dy < 0) { player.direction = 'up'; }
-                else if (dy > 0) { player.direction = 'down'; }
-                else if (dx < 0) { player.direction = 'left'; }
-                else if (dx > 0) { player.direction = 'right'; }
+                // Atualiza o ângulo de movimento para a seta direcional
+                player.movementAngle = Math.atan2(dy, dx);
+
+                // Lógica de direção para sprite (mantém para animação de sprite, se aplicável)
+                if (Math.abs(dx) > Math.abs(dy)) { // Movimento horizontal é mais dominante
+                    player.direction = (dx < 0) ? 'left' : 'right';
+                } else { // Movimento vertical é mais dominante ou igual
+                    player.direction = (dy < 0) ? 'up' : 'down';
+                }
 
                 const len = Math.sqrt(dx * dx + dy * dy);
                 const moveAmount = (len === 0) ? 0 : (player.speed / len); // Evita divisão por zero
@@ -2004,6 +2044,10 @@
                 const currentY = e.touches[0].clientY;
                 const deltaX = currentX - touchStartX;
                 const deltaY = currentY - touchStartY;
+                // Calcula o ângulo de movimento do toque para a seta
+                if (deltaX !== 0 || deltaY !== 0) {
+                    player.movementAngle = Math.atan2(deltaY, deltaX);
+                }
                 // Move o jogador com base no delta do toque (ajustado com um multiplicador para sensibilidade)
                 const moveAmount = 0.15; // Ajuste para a sensibilidade do toque
                 player.x += deltaX * moveAmount;
@@ -2019,4 +2063,3 @@
     </script>
 </body>
 </html>
-�
